@@ -1,0 +1,37 @@
+services:
+  - type: web
+    name: jobboard-api
+    env: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: jobboard-db
+          property: connectionString
+      - key: ALLOW_ORIGINS
+        value: https://your-frontend.vercel.app
+      - key: GH_ORGS
+        value: stripe,datadog,brex
+      - key: LEVER_ORGS
+        value: palantir,welocalize,360learning
+      - key: ASHBY_ORGS
+        value: openai,notion
+    healthCheckPath: /health
+
+databases:
+  - name: jobboard-db
+    plan: free
+
+  - type: worker
+    name: jobboard-ingest
+    env: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m app.ingest_loop
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: jobboard-db
+          property: connectionString
