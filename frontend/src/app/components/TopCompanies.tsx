@@ -26,7 +26,7 @@ export default function TopCompanies({
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         setRows(await res.json());
       } catch (e: any) {
-        setErr(e.message);
+        setErr(e instanceof Error ? e.message : "Failed to fetch companies");
       } finally {
         setLoading(false);
       }

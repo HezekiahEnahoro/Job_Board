@@ -133,7 +133,9 @@ export default function JobsTable() {
         </div>
         <div className="space-y-1">
           <Label>Remote</Label>
-          <Select value={remote} onValueChange={(v) => setRemote(v as any)}>
+          <Select
+            value={remote}
+            onValueChange={(v: RemoteFilter) => setRemote(v)}>
             <SelectTrigger>
               <SelectValue placeholder="Any" />
             </SelectTrigger>

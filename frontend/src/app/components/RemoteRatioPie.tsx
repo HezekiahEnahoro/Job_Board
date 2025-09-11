@@ -33,7 +33,7 @@ export default function RemoteRatioPie({ days = 90 }: { days?: number }) {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         setData(await res.json());
       } catch (e: any) {
-        setErr(e.message);
+        setErr(e instanceof Error ? e.message : "Failed to fetch RemoteRatio");
       } finally {
         setLoading(false);
       }
