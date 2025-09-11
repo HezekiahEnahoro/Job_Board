@@ -1,22 +1,51 @@
-// frontend/src/app/components/JobsTable.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import ViewJob from "./ViewJob";
 
-type Job = { id: number; title: string; company: string; location?: string; remote_flag?: boolean; posted_at?: string | null; apply_url?: string | null; };
-type JobsPage = { total: number; count: number; next: number | null; items: Job[] };
-
 const API = process.env.NEXT_PUBLIC_API_BASE;
 
-// NOTE: no empty string in Select values.
+type Job = {
+  id: number;
+  title: string;
+  company: string;
+  location?: string | null;
+  remote_flag?: boolean | null;
+  posted_at?: string | null;
+  apply_url?: string | null;
+  description_text?: string | null;
+};
+
+type JobsPage = {
+  total: number;
+  count: number;
+  next: number | null;
+  items: Job[];
+};
+
 type RemoteFilter = "any" | "true" | "false";
+
+function isJobsPage(value: unknown): value is JobsPage {
+  if (!value || typeof value !== "object") return false;
+  const v = value as JobsPage;
+  return (
+    typeof v.total === "number" &&
+    typeof v.count === "number" &&
+    "next" in v &&
+    Array.isArray(v.items)
+  );
+}
+
 export default function JobsTable() {
   const [offset, setOffset] = useState(0);
   const [q, setQ] = useState("");
@@ -28,29 +57,48 @@ export default function JobsTable() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function load(off = 0) {
-    setLoading(true);
-    setError(null);
-    const params = new URLSearchParams({ limit: "25", offset: String(off), days: "30" });
+  const queryString = useMemo(() => {
+    const params = new URLSearchParams({
+      limit: "25",
+      offset: String(offset),
+      days: "30",
+    });
     if (q) params.set("q", q);
     if (skill) params.set("skill", skill);
     if (location) params.set("location", location);
     if (remote !== "any") params.set("remote", remote);
+    return params.toString();
+  }, [offset, q, skill, location, remote]);
 
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
-      const res = await fetch(`${API}/jobs/page?` + params.toString(), { cache: "no-store" });
-      if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
-      const data: JobsPage = await res.json();
-      setPage(data);
-    } catch (e: any) {
-      setError(e.message ?? "Failed to load");
+      const res = await fetch(`${API}/jobs/page?${queryString}`, {
+        cache: "no-store",
+      });
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        throw new Error(`HTTP ${res.status}${txt ? `: ${txt}` : ""}`);
+      }
+      const json: unknown = await res.json();
+      if (!isJobsPage(json)) throw new Error("Unexpected response shape");
+      setPage(json);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to load";
+      setError(msg);
     } finally {
       setLoading(false);
     }
-  }
+  }, [queryString]);
 
-  useEffect(() => { load(offset); /* eslint-disable-next-line */ }, [offset]);
-  const applyFilters = () => { setOffset(0); load(0); };
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const applyFilters = () => {
+    setOffset(0);
+  };
 
   return (
     <div className="space-y-4">
