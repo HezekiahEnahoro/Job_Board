@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import ViewJob from "./ViewJob";
+import { getErrorMessage } from "@/lib/getErrorMessage";
 
 const API = process.env.NEXT_PUBLIC_API_BASE;
 
@@ -84,9 +85,8 @@ export default function JobsTable() {
       const json: unknown = await res.json();
       if (!isJobsPage(json)) throw new Error("Unexpected response shape");
       setPage(json);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Failed to load";
-      setError(msg);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }

@@ -8,6 +8,8 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
+import { getErrorMessage } from "@/lib/getErrorMessage";
+
 type Ratio = {
   total: number;
   remote: number;
@@ -30,10 +32,13 @@ export default function RemoteRatioPie({ days = 90 }: { days?: number }) {
         const res = await fetch(`${API}/trends/remote_ratio?days=${days}`, {
           cache: "no-store",
         });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        setData(await res.json());
-      } catch (e: any) {
-        setErr(e instanceof Error ? e.message : "Failed to fetch RemoteRatio");
+        if (!res.ok) throw new Error(`HTTP ${res.status}`); const json: unknown = await res.json();
+        // quick guard
+        const maybe = json as Partial<Ratio>;
+        if (typeof maybe?.total !== "number") throw new Error("Unexpected response");
+        setData(json as Ratio);
+      } catch (e: unknown) {
+        setErr(getErrorMessage(e));
       } finally {
         setLoading(false);
       }

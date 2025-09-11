@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 type Row = { company: string; count: number };
+import { getErrorMessage } from "@/lib/getErrorMessage";
 
 const API = process.env.NEXT_PUBLIC_API_BASE;
 export default function TopCompanies({
@@ -24,9 +25,11 @@ export default function TopCompanies({
           { cache: "no-store" }
         );
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        setRows(await res.json());
-      } catch (e: any) {
-        setErr(e instanceof Error ? e.message : "Failed to fetch companies");
+        const data: unknown = await res.json();
+        if (!Array.isArray(data)) throw new Error("Unexpected response");
+        setRows(data as Row[]);
+      } catch (e: unknown) {
+        setErr(getErrorMessage(e));
       } finally {
         setLoading(false);
       }

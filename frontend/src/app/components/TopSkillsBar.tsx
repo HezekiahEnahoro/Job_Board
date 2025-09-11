@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { getErrorMessage } from "@/lib/getErrorMessage";
 import {
   BarChart,
   Bar,
@@ -34,9 +35,12 @@ export default function TopSkillsBar({
           { cache: "no-store" }
         );
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        setRows(await res.json());
-      } catch (e: any) {
-        setErr(e instanceof Error ? e.message : "Failed to fetch skills");
+        const data: unknown = await res.json();
+        // naive runtime check
+        if (!Array.isArray(data)) throw new Error("Unexpected response");
+        setRows(data as Row[]);
+      } catch (e: unknown) {
+        setErr(getErrorMessage(e));
       } finally {
         setLoading(false);
       }

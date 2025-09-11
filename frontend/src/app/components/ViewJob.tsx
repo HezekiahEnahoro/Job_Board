@@ -44,7 +44,7 @@ export default function ViewJob({ job }: { job: JobFull }) {
 
         {/* 3) Typography + dark mode */}
         <div className="max-h-[60vh] overflow-auto">
-          <article className="sm max-w-none headings:font-semibold text-primary dark:text-blue-400">
+          <article className="sm max-w-none headings:font-semibold text-primary dark:text-white">
             {content || "No description available."}
           </article>
         </div>
