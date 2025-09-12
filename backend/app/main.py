@@ -17,7 +17,7 @@ app = FastAPI(title="JobBoard API", version="0.5.1")
 scheduler: AsyncIOScheduler | None = None
 
 # CORS — allow Next.js dev origins
-ALLOW_ORIGINS = os.getenv("ALLOW_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
+ALLOW_ORIGINS = os.getenv("ALLOW_ORIGINS", "https://job-board-plum.vercel.app,http://localhost:3000").split(",")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[o.strip() for o in ALLOW_ORIGINS if o.strip()],
