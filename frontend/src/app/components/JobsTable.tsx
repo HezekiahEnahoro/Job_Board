@@ -14,7 +14,8 @@ import {
 import ViewJob from "./ViewJob";
 import { getErrorMessage } from "@/lib/getErrorMessage";
 
-const API = process.env.NEXT_PUBLIC_API_BASE;
+const API =
+  process.env.NEXT_PUBLIC_API_BASE || "https://job-board-iqkz.onrender.com";
 
 type Job = {
   id: number;

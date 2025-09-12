@@ -11,7 +11,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-const API = process.env.NEXT_PUBLIC_API_BASE;
+const API = process.env.NEXT_PUBLIC_API_BASE || "https://job-board-iqkz.onrender.com";
 type Row = { skill: string; count: number };
 
 export default function TopSkillsBar({

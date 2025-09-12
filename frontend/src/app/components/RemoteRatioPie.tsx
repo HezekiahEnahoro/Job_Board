@@ -17,7 +17,7 @@ type Ratio = {
   remote_pct: number;
 };
 
-const API = process.env.NEXT_PUBLIC_API_BASE;
+const API = process.env.NEXT_PUBLIC_API_BASE || "https://job-board-iqkz.onrender.com";
 const COLORS = ["#0088FE", "#00C49F"];
 export default function RemoteRatioPie({ days = 90 }: { days?: number }) {
   const [data, setData] = useState<Ratio | null>(null);

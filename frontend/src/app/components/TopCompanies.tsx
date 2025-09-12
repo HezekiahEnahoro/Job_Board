@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 type Row = { company: string; count: number };
 import { getErrorMessage } from "@/lib/getErrorMessage";
 
-const API = process.env.NEXT_PUBLIC_API_BASE;
+const API = process.env.NEXT_PUBLIC_API_BASE || "https://job-board-iqkz.onrender.com";
 export default function TopCompanies({
   days = 90,
   topK = 10,
