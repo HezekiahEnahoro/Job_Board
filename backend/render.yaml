@@ -11,7 +11,7 @@ services:
           name: jobboard-db
           property: connectionString
       - key: ALLOW_ORIGINS
-        value: https://job-board-plum.vercel.app/
+        value: https://job-board-plum.vercel.app
       - key: GH_ORGS
         value: stripe,datadog,brex
       - key: LEVER_ORGS
