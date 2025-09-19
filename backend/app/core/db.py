@@ -3,8 +3,8 @@ from sqlalchemy import create_engine, text, Connection
 from sqlalchemy.orm import sessionmaker, declarative_base, Session
 
 DATABASE_URL = os.getenv(
-    "DATABASE_URL"
-    # "postgresql+psycopg2://jobuser:jobpass@db:5432/jobsdb"
+    "DATABASE_URL",
+    "postgresql+psycopg2://jobuser:jobpass@db:5432/jobsdb"
 )
 
 engine = create_engine(DATABASE_URL, pool_pre_ping=True, pool_size=5,

@@ -56,7 +56,7 @@ async def lifespan(app: FastAPI):
     if scheduler:
         scheduler.shutdown(wait=False)
 
-app = FastAPI(title="JobBoard API", version="0.5.1", lifespan=lifespan)
+# app = FastAPI(title="JobBoard API", version="0.5.1", lifespan=lifespan)
 
 @app.get("/health")
 def health():
