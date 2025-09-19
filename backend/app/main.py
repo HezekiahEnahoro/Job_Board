@@ -5,9 +5,10 @@ from sqlalchemy.orm import Session
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import os, asyncio
 from sqlalchemy import select, func
+from contextlib import asynccontextmanager
 
 from app.core import models
-from app.core.db import init_db, get_db
+from app.core.db import init_db, get_db, ensure_indexes, engine
 from app.core import crud, schemas
 from app.core import trends as trends_svc
 from app.ingest import run_ingest_once
@@ -26,9 +27,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.on_event("startup")
-async def on_startup():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    print("🚀 Starting JobBoard API...")
     init_db()
+
+    # Create performance indexes
+    with engine.connect() as conn:
+        ensure_indexes(conn)
+        print("📊 Database indexes created")
 
     # kick off one ingestion ASAP on the running event loop
     asyncio.create_task(run_ingest_once())
@@ -39,12 +47,16 @@ async def on_startup():
     # With AsyncIOScheduler you can schedule coroutine functions directly:
     scheduler.add_job(run_ingest_once, trigger="interval", hours=12)
     scheduler.start()
-
-@app.on_event("shutdown")
-def on_shutdown():
-    global scheduler
+    print("⏰ Scheduler started")
+    
+    yield  # App runs here
+    
+    # Shutdown
+    print("🛑 Shutting down...")
     if scheduler:
         scheduler.shutdown(wait=False)
+
+app = FastAPI(title="JobBoard API", version="0.5.1", lifespan=lifespan)
 
 @app.get("/health")
 def health():

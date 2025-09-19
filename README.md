@@ -14,6 +14,3 @@ FastAPI, SQLAlchemy, Postgres, Docker, APScheduler
 ## Run
 docker compose up --build
 # Frontend: npm run dev
-
-## Demo data
-docker compose exec api python -m app.seed
