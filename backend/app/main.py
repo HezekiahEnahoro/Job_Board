@@ -12,20 +12,35 @@ from app.core.db import init_db, get_db, ensure_indexes, engine
 from app.core import crud, schemas
 from app.core import trends as trends_svc
 from app.ingest import run_ingest_once
+from app.services.auth.router import router as auth_router
+from app.services.applications.router import router as applications_router
+from app.services.email.router import router as email_router
+from app.services.ai.router import router as ai_router
+from app.services.stripe.router import router as stripe_router
 
-# app = FastAPI(title="JobBoard API", version="0.4.1")
+
 app = FastAPI(title="JobBoard API", version="0.5.1")
 scheduler: AsyncIOScheduler | None = None
 
-# CORS — allow Next.js dev origins
-ALLOW_ORIGINS = os.getenv("ALLOW_ORIGINS", "https://job-board-plum.vercel.app,http://localhost:3000").split(",")
+# CORS - CRITICAL: Must be before other middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[o.strip() for o in ALLOW_ORIGINS if o.strip()],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "https://job-board-plum.vercel.app",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include routers
+app.include_router(auth_router)
+app.include_router(applications_router)
+app.include_router(email_router)
+app.include_router(ai_router)
+app.include_router(stripe_router)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -47,7 +62,33 @@ async def lifespan(app: FastAPI):
     # With AsyncIOScheduler you can schedule coroutine functions directly:
     scheduler.add_job(run_ingest_once, trigger="interval", hours=12)
     scheduler.start()
-    print("⏰ Scheduler started")
+    # Follow-up reminders (daily at 9 AM)
+    from app.services.email.tasks import check_followup_reminders
+    from app.core.db import SessionLocal
+    
+    def run_followup_check():
+        db = SessionLocal()
+        try:
+            check_followup_reminders(db)
+        finally:
+            db.close()
+    
+    scheduler.add_job(run_followup_check, "cron", hour=9, minute=0)
+    
+    # Weekly digest (Sundays at 10 AM)
+    from app.services.email.tasks import send_weekly_digests
+    
+    def run_weekly_digest():
+        db = SessionLocal()
+        try:
+            send_weekly_digests(db)
+        finally:
+            db.close()
+    
+    scheduler.add_job(run_weekly_digest, "cron", day_of_week="sun", hour=10, minute=0)
+    
+    scheduler.start()
+    print("✅ Scheduler started with email tasks")
     
     yield  # App runs here
     

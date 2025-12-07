@@ -1,5 +1,6 @@
 # app/ingest.py
 import os
+from dotenv import load_dotenv
 import asyncio
 from sqlalchemy.orm import Session
 from .core.db import SessionLocal
@@ -7,6 +8,8 @@ from .core import crud, schemas
 from .collectors.greenhouse import fetch_greenhouse_org
 from .collectors.lever import fetch_lever_org
 from .collectors.ashby import fetch_ashby_org
+
+load_dotenv()
 
 def get_env_list(key: str) -> list[str]:
     raw = os.getenv(key, "")

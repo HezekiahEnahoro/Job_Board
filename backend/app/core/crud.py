@@ -2,6 +2,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select, func, and_
 from datetime import datetime, timedelta
 from . import models, schemas
+from sqlalchemy import cast, String, func as sqlfunc, any_
+from sqlalchemy.dialects.postgresql import ARRAY
 
 def _find_existing(db: Session, title: str, company: str, canonical_url: str | None):
     if not canonical_url:
@@ -86,7 +88,14 @@ def list_jobs_paginated(
         )
     if skill:
         # JSON array contains skill (normalize to lower)
-        stmt = stmt.where(func.array_position(func.lower(models.Job.skills), skill.lower()) != None)
+        skill_lower = skill.strip().lower()
+        cond = sqlfunc.exists(
+            sqlfunc.select(1).select_from(
+                sqlfunc.unnest(models.Job.skills).alias('skill')
+            ).where(
+                sqlfunc.lower(sqlfunc.cast(sqlfunc.column('skill'), String)) == skill_lower
+            )
+        )
 
     if location:
         stmt = stmt.where(func.lower(models.Job.location).like(f"%{location.lower()}%"))

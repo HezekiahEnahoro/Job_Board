@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,9 +14,10 @@ import {
 } from "@/components/ui/select";
 import ViewJob from "./ViewJob";
 import { getErrorMessage } from "@/lib/getErrorMessage";
+import { getToken } from "@/lib/auth";
+import { toast } from "sonner";
 
-const API =
-  process.env.NEXT_PUBLIC_API_BASE || "https://job-board-iqkz.onrender.com";
+const API = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
 
 type Job = {
   id: number;
@@ -54,10 +56,10 @@ export default function JobsTable() {
   const [skill, setSkill] = useState("");
   const [location, setLocation] = useState("");
   const [remote, setRemote] = useState<RemoteFilter>("any");
-
   const [page, setPage] = useState<JobsPage | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams({
@@ -101,6 +103,36 @@ export default function JobsTable() {
     setOffset(0);
   };
 
+  const trackJob = async (jobId: number) => {
+    const token = getToken();
+    if (!token) {
+      toast.error("Please login to track jobs");
+      router.push("/auth");
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API}/applications/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ job_id: jobId, status: "saved" }),
+      });
+
+      if (res.ok) {
+        toast.success("Job saved to tracker!");
+      } else if (res.status === 400) {
+        toast.warning("Already tracking this job");
+      } else {
+        toast.error("Failed to track job");
+      }
+    } catch (error) {
+      toast.error("Network error");
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Filters */}
@@ -134,9 +166,7 @@ export default function JobsTable() {
         </div>
         <div className="space-y-1">
           <Label>Remote</Label>
-          <Select
-            value={remote}
-            onValueChange={(v: RemoteFilter) => setRemote(v)}>
+          <Select value={remote} onValueChange={(v: RemoteFilter) => setRemote(v)}>
             <SelectTrigger>
               <SelectValue placeholder="Any" />
             </SelectTrigger>
@@ -152,14 +182,31 @@ export default function JobsTable() {
         </Button>
       </div>
 
+      {/* Error State */}
       {error && <p className="text-sm text-red-600">Error: {error}</p>}
-      {loading && <p className="text-sm text-gray-600">Loading…</p>}
 
-      {!loading && page && (
+      {/* Loading State */}
+      {loading && (
+        <div className="flex justify-center items-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      )}
+
+      {/* Empty State */}
+      {!loading && page && page.items.length === 0 && (
+        <div className="text-center py-12 text-gray-500 bg-gray-50 dark:bg-gray-900 rounded-lg border-2 border-dashed">
+          <p className="text-lg font-semibold">No jobs found</p>
+          <p className="text-sm mt-2">Try adjusting your filters</p>
+        </div>
+      )}
+
+      {/* Jobs Table */}
+      {!loading && page && page.items.length > 0 && (
         <>
           <div className="text-sm text-gray-600 dark:text-neutral-400">
-            Total: {page.total}
+            Total: {page.total} jobs
           </div>
+          
           <div className="overflow-hidden border rounded-2xl bg-white dark:bg-neutral-900 dark:border-neutral-800">
             <table className="min-w-full divide-y divide-gray-100 dark:divide-neutral-800">
               <thead className="bg-gray-50 dark:bg-neutral-800/60">
@@ -172,33 +219,44 @@ export default function JobsTable() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-neutral-800">
-                {page.items.map((j) => (
+                {page.items.map((job) => (
                   <tr
-                    key={j.id}
-                    className="hover:bg-gray-50 dark:hover:bg-neutral-800/50">
+                    key={job.id}
+                    className="hover:bg-gray-50 dark:hover:bg-neutral-800/50"
+                  >
                     <td className="px-4 py-3">
-                      {j.apply_url ? (
-                        <a
-                          className="font-medium text-blue-600 hover:underline"
-                          href={j.apply_url}
-                          target="_blank">
-                          {j.title}
+                      {job.apply_url ? (
+                        <a className="font-medium text-blue-600 hover:underline"
+                          href={job.apply_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {job.title}
                         </a>
                       ) : (
-                        j.title
+                        job.title
                       )}
                     </td>
-                    <td className="px-4 py-3">{j.company}</td>
+                    <td className="px-4 py-3">{job.company}</td>
                     <td className="px-4 py-3">
-                      {j.location || (j.remote_flag ? "Remote" : "")}
+                      {job.location || (job.remote_flag ? "Remote" : "-")}
                     </td>
                     <td className="px-4 py-3">
-                      {j.posted_at
-                        ? new Date(j.posted_at).toLocaleDateString()
+                      {job.posted_at
+                        ? new Date(job.posted_at).toLocaleDateString()
                         : "-"}
                     </td>
                     <td className="px-4 py-3">
-                      <ViewJob job={j} />
+                      <div className="flex gap-2">
+                        <ViewJob job={job} />
+                        <Button
+                          onClick={() => trackJob(job.id)}
+                          size="sm"
+                          variant="outline"
+                        >
+                          Track
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -206,17 +264,23 @@ export default function JobsTable() {
             </table>
           </div>
 
-          <div className="flex gap-2">
+          {/* Pagination */}
+          <div className="flex gap-2 justify-between items-center">
             <Button
               variant="outline"
               onClick={() => setOffset(Math.max(0, offset - 25))}
-              disabled={offset === 0}>
-              ← Prev
+              disabled={offset === 0}
+            >
+              ← Previous
             </Button>
+            <span className="text-sm text-gray-600">
+              Showing {offset + 1} - {Math.min(offset + 25, page.total)} of {page.total}
+            </span>
             <Button
               variant="outline"
               onClick={() => (page.next != null ? setOffset(page.next) : null)}
-              disabled={page.next == null}>
+              disabled={page.next == null}
+            >
               Next →
             </Button>
           </div>
