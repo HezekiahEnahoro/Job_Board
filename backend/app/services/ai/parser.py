@@ -1,27 +1,27 @@
-import PyPDF2
-import docx
 import io
-from typing import Optional
+from PyPDF2 import PdfReader
+from docx import Document
 
 def extract_text_from_pdf(file_content: bytes) -> str:
     """Extract text from PDF file"""
     try:
         pdf_file = io.BytesIO(file_content)
-        pdf_reader = PyPDF2.PdfReader(pdf_file)
+        reader = PdfReader(pdf_file)
         
         text = ""
-        for page in pdf_reader.pages:
+        for page in reader.pages:
             text += page.extract_text() + "\n"
         
         return text.strip()
     except Exception as e:
         raise ValueError(f"Failed to parse PDF: {str(e)}")
 
+
 def extract_text_from_docx(file_content: bytes) -> str:
     """Extract text from DOCX file"""
     try:
-        doc_file = io.BytesIO(file_content)
-        doc = docx.Document(doc_file)
+        docx_file = io.BytesIO(file_content)
+        doc = Document(docx_file)
         
         text = ""
         for paragraph in doc.paragraphs:
@@ -31,33 +31,38 @@ def extract_text_from_docx(file_content: bytes) -> str:
     except Exception as e:
         raise ValueError(f"Failed to parse DOCX: {str(e)}")
 
+
 def extract_text_from_resume(file_content: bytes, filename: str) -> str:
-    """Extract text from resume file (PDF or DOCX)"""
+    """
+    Extract text from resume file (PDF or DOCX)
+    Uses filename extension to determine type
+    """
     filename_lower = filename.lower()
     
     if filename_lower.endswith('.pdf'):
         return extract_text_from_pdf(file_content)
-    elif filename_lower.endswith('.docx') or filename_lower.endswith('.doc'):
+    elif filename_lower.endswith('.docx'):
         return extract_text_from_docx(file_content)
     else:
-        raise ValueError(f"Unsupported file format. Please upload PDF or DOCX. Got: {filename}")
+        raise ValueError("Unsupported file format. Please upload PDF or DOCX.")
+
 
 def validate_resume_text(text: str) -> bool:
-    """Validate that extracted text looks like a resume"""
-    # Basic validation - resume should have some minimum content
-    if len(text.strip()) < 100:
-        raise ValueError("Resume appears to be too short or empty")
+    """
+    Validate that extracted text looks like a resume
+    """
+    if not text or len(text) < 100:
+        return False
     
-    # Check for common resume keywords (at least one should be present)
+    # Check for common resume keywords
     resume_keywords = [
-        'experience', 'education', 'skills', 'work', 'university', 
-        'college', 'degree', 'project', 'software', 'engineer'
+        'experience', 'education', 'skills', 'work', 'university',
+        'college', 'job', 'project', 'developer', 'engineer',
+        'manager', 'email', 'phone', 'address'
     ]
     
     text_lower = text.lower()
-    has_keyword = any(keyword in text_lower for keyword in resume_keywords)
+    matches = sum(1 for keyword in resume_keywords if keyword in text_lower)
     
-    if not has_keyword:
-        raise ValueError("File doesn't appear to be a resume. Please upload a valid resume.")
-    
-    return True
+    # At least 3 resume-related keywords should be present
+    return matches >= 3
