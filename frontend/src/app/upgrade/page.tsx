@@ -65,8 +65,9 @@ export default function UpgradePage() {
 
       // Redirect to Stripe Checkout
       window.location.href = data.checkout_url;
-    } catch (err: any) {
-      toast.error(err.message, { id: "checkout" });
+    } catch (err: unknown) {
+      const error = err as Error;
+      toast.error(error.message, { id: "checkout" });
       setUpgrading(false);
     }
   };
@@ -198,8 +199,8 @@ export default function UpgradePage() {
           <Card className="p-6">
             <h3 className="font-semibold mb-2">Can I cancel anytime?</h3>
             <p className="text-gray-600 dark:text-gray-400">
-              Yes! Cancel anytime from your dashboard. You'll keep Pro until the
-              end of your billing period.
+              Yes! Cancel anytime from your dashboard. You&lsquo;ll keep Pro
+              until the end of your billing period.
             </p>
           </Card>
 

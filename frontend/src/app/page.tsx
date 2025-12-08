@@ -148,8 +148,8 @@ export default function LandingPage() {
                     Track Your Applications
                   </h3>
                   <p className="mt-2 text-gray-600 dark:text-gray-400">
-                    Browse jobs and click "Track" to add them to your pipeline.
-                    Update status as you progress.
+                    Browse jobs and click &ldquo;Track&ldquo; to add them to
+                    your pipeline. Update status as you progress.
                   </p>
                 </div>
               </div>

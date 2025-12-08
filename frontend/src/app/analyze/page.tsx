@@ -100,27 +100,21 @@ export default function AnalyzePage() {
 
   const handleAnalyze = async () => {
     if (!file || !selectedJobId) {
-      toast.error("Please select a resume and a job");
+      setError("Please select a resume and a job");
       return;
     }
 
     setAnalyzing(true);
-    toast.loading("Analyzing your resume...", { id: "analyzing" });
     setError(null);
-    setResult(null);
-
-    const token = getToken();
-    if (!token) {
-      router.push("/auth");
-      return;
-    }
+    toast.loading("Analyzing your resume...", { id: "analyzing" });
 
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("job_id", selectedJobId);
+    formData.append("job_id", selectedJobId.toString());
     formData.append("generate_cover", generateCover.toString());
 
     try {
+      const token = getToken();
       const res = await fetch(`${API}/ai/analyze-resume`, {
         method: "POST",
         headers: {
@@ -129,13 +123,18 @@ export default function AnalyzePage() {
         body: formData,
       });
 
-      if (res.ok) {
-        toast.success("Analysis complete!", { id: "analyzing" });
-        const data = await res.json();
-        setResult(data);
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.detail || "Analysis failed");
       }
-    } catch (err: any) {
-      toast.error(err.message || "Analysis failed", { id: "analyzing" });
+
+      const data = await res.json();
+      setResult(data);
+      toast.success("Analysis complete!", { id: "analyzing" });
+    } catch (err: unknown) {
+      const error = err as Error;
+      setError(error.message || "Analysis failed");
+      toast.error(error.message || "Analysis failed", { id: "analyzing" });
     } finally {
       setAnalyzing(false);
     }

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { login, signup } from "@/lib/auth";
+import { toast } from "sonner";
 
 export default function AuthPage() {
   const [mode, setMode] = useState<"login" | "signup">("login");
@@ -24,11 +25,15 @@ export default function AuthPage() {
     try {
       if (mode === "signup") {
         await signup(email, password, fullName);
+        toast.success("Account created!");
       }
       await login(email, password);
       router.push("/dashboard");
-    } catch (err: any) {
-      setError(err.message || "Authentication failed");
+      toast.success("Welcome back!");
+    } catch (err: unknown) {
+      const error = err as Error;
+      setError(error.message);
+      toast.error(error.message);
     } finally {
       setLoading(false);
     }
