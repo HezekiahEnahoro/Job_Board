@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,8 +8,7 @@ import { CheckCircle2, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 
-export default function UpgradeSuccessPage() {
-  const router = useRouter();
+function SuccessContent() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get("session_id");
 
@@ -39,7 +38,7 @@ export default function UpgradeSuccessPage() {
         </p>
 
         <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-6 mb-8">
-          <h3 className="font-semibold mb-3">What&lsquo;s unlocked:</h3>
+          <h3 className="font-semibold mb-3">What&apos;s unlocked:</h3>
           <ul className="text-sm text-left space-y-2">
             <li className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
@@ -83,5 +82,18 @@ export default function UpgradeSuccessPage() {
         </p>
       </Card>
     </div>
+  );
+}
+
+export default function UpgradeSuccessPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[60vh] items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      }>
+      <SuccessContent />
+    </Suspense>
   );
 }
