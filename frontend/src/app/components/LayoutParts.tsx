@@ -67,7 +67,7 @@ export function Navbar() {
                   <Sparkles className="w-4 h-4" />
                   AI Analyzer
                 </Link>
-                <ThemeToggle/>
+                {/* <ThemeToggle/> */}
                 <Button variant="ghost" size="sm" onClick={logout}>
                   Logout
                 </Button>
