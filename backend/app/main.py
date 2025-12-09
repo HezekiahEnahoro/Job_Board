@@ -25,10 +25,7 @@ scheduler: AsyncIOScheduler | None = None
 # CORS - CRITICAL: Must be before other middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://job-board-plum.vercel.app",
-        "*",
-    ],
+    allow_origins=["*"],
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
