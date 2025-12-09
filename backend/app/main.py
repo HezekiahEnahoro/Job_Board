@@ -19,24 +19,7 @@ from app.services.ai.router import router as ai_router
 from app.services.stripe.router import router as stripe_router
 
 
-app = FastAPI(title="JobBoard API", version="0.5.1")
 scheduler: AsyncIOScheduler | None = None
-
-# CORS - CRITICAL: Must be before other middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Include routers
-app.include_router(auth_router)
-app.include_router(applications_router)
-app.include_router(email_router)
-app.include_router(ai_router)
-app.include_router(stripe_router)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -93,7 +76,25 @@ async def lifespan(app: FastAPI):
     if scheduler:
         scheduler.shutdown(wait=False)
 
-# app = FastAPI(title="JobBoard API", version="0.5.1", lifespan=lifespan)
+app = FastAPI(title="JobBoard API", version="0.5.1", lifespan=lifespan)
+
+# CORS - CRITICAL: Must be before other middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Include routers
+app.include_router(auth_router)
+app.include_router(applications_router)
+app.include_router(email_router)
+app.include_router(ai_router)
+app.include_router(stripe_router)
+
+
 @app.get("/")
 def root():
     return {"message": "JobFlow API is running"}
