@@ -2,7 +2,7 @@ import os
 from sqlalchemy import create_engine, text, Connection
 from sqlalchemy.orm import sessionmaker, declarative_base, Session
 
-# For local dev, connect to localhost:5432 (Docker exposes it)
+# Get DATABASE_URL from environment
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 # Fix SSL for Render PostgreSQL
@@ -11,17 +11,23 @@ if DATABASE_URL and "render.com" in DATABASE_URL:
     if DATABASE_URL.startswith("postgres://"):
         DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
     
-    # Add SSL mode
+    # Add SSL mode to URL (don't use connect_args for SSL)
     if "?" in DATABASE_URL:
-        DATABASE_URL += "&sslmode=require"
+        if "sslmode" not in DATABASE_URL:
+            DATABASE_URL += "&sslmode=require"
     else:
         DATABASE_URL += "?sslmode=require"
 
-engine = create_engine(DATABASE_URL, pool_pre_ping=True,
-pool_recycle=300,
-connect_args={
+# Create engine (NO sslmode in connect_args!)
+engine = create_engine(
+    DATABASE_URL, 
+    pool_pre_ping=True,
+    pool_recycle=300,
+    connect_args={
         "connect_timeout": 10,
-    })
+    }
+)
+
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 Base = declarative_base()
 
@@ -36,8 +42,6 @@ def init_db() -> None:
     from . import models
     from app.services.auth import models as auth_models
     Base.metadata.create_all(bind=engine)
-    with engine.begin() as conn:
-        ensure_indexes(conn)
 
 def ensure_indexes(conn: Connection):
     conn.execute(text("CREATE INDEX IF NOT EXISTS idx_jobs_company ON jobs (company)"))
