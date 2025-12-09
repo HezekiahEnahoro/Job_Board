@@ -29,6 +29,7 @@ app.add_middleware(
         "http://localhost:3000",
         "http://127.0.0.1:3000",
         "https://job-board-plum.vercel.app",
+        "https://*.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -98,6 +99,9 @@ async def lifespan(app: FastAPI):
         scheduler.shutdown(wait=False)
 
 # app = FastAPI(title="JobBoard API", version="0.5.1", lifespan=lifespan)
+@app.get("/")
+def root():
+    return {"message": "JobFlow API is running"}
 
 @app.get("/health")
 def health():

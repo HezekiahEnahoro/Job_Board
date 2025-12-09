@@ -3,12 +3,25 @@ from sqlalchemy import create_engine, text, Connection
 from sqlalchemy.orm import sessionmaker, declarative_base, Session
 
 # For local dev, connect to localhost:5432 (Docker exposes it)
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql+psycopg2://jobuser:jobpass@localhost:5432/jobsdb"  # localhost instead of 'db'
-)
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-engine = create_engine(DATABASE_URL, pool_pre_ping=True, pool_size=5, max_overflow=5, pool_recycle=1800)
+# Fix SSL for Render PostgreSQL
+if DATABASE_URL and "render.com" in DATABASE_URL:
+    # Replace postgres:// with postgresql:// (psycopg2 requirement)
+    if DATABASE_URL.startswith("postgres://"):
+        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+    
+    # Add SSL mode
+    if "?" in DATABASE_URL:
+        DATABASE_URL += "&sslmode=require"
+    else:
+        DATABASE_URL += "?sslmode=require"
+
+engine = create_engine(DATABASE_URL, pool_pre_ping=True,
+pool_recycle=300,
+connect_args={
+        "connect_timeout": 10,
+    })
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 Base = declarative_base()
 
