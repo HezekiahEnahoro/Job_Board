@@ -40,7 +40,7 @@ async def lifespan(app: FastAPI):
     scheduler = AsyncIOScheduler()
     # With AsyncIOScheduler you can schedule coroutine functions directly:
     scheduler.add_job(run_ingest_once, trigger="interval", hours=12)
-    scheduler.start()
+
     # Follow-up reminders (daily at 9 AM)
     from app.services.email.tasks import check_followup_reminders
     from app.core.db import SessionLocal
