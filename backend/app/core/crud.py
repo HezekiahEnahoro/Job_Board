@@ -1,8 +1,8 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func, and_, exists
 from datetime import datetime, timedelta
 from . import models, schemas
-from sqlalchemy import cast, String, func as sqlfunc, any_
+from sqlalchemy import cast, String, any_
 from sqlalchemy.dialects.postgresql import ARRAY
 
 def _find_existing(db: Session, title: str, company: str, canonical_url: str | None):
@@ -76,9 +76,12 @@ def list_jobs_paginated(
     remote: bool | None = None,
 ):
     stmt = select(models.Job)
+    
+    # Apply filters
     if days:
         cutoff = datetime.utcnow() - timedelta(days=days)
         stmt = stmt.where(models.Job.scraped_at >= cutoff)
+    
     if q:
         like = f"%{q.lower()}%"
         stmt = stmt.where(
@@ -86,34 +89,44 @@ def list_jobs_paginated(
             func.lower(models.Job.company).like(like) |
             func.lower(models.Job.description_text).like(like)
         )
+    
     if skill:
-        # JSON array contains skill (normalize to lower)
+        # Check if the skill exists in the skills array (case-insensitive)
         skill_lower = skill.strip().lower()
-        cond = sqlfunc.exists(
-            sqlfunc.select(1).select_from(
-                sqlfunc.unnest(models.Job.skills).alias('skill')
-            ).where(
-                sqlfunc.lower(sqlfunc.cast(sqlfunc.column('skill'), String)) == skill_lower
+        # Use PostgreSQL's array functions
+        stmt = stmt.where(
+            func.exists(
+                select(1).where(
+                    func.lower(func.unnest(models.Job.skills)) == skill_lower
+                )
             )
         )
-
+    
     if location:
         stmt = stmt.where(func.lower(models.Job.location).like(f"%{location.lower()}%"))
-
+    
     if remote is not None:
         stmt = stmt.where(models.Job.remote_flag.is_(remote))
 
-    # total first
+    # Get total count
     total = db.scalar(
         select(func.count()).select_from(stmt.subquery())
     ) or 0
 
-    # page slice
+    # Get page of results
     page_stmt = (
         stmt.order_by(models.Job.posted_at.desc().nullslast(), models.Job.scraped_at.desc())
             .limit(limit)
             .offset(offset)
     )
     rows = db.execute(page_stmt).scalars().all()
+    
+    # Calculate next offset
     next_offset = offset + limit if offset + limit < total else None
-    return {"total": total, "count": len(rows), "next": next_offset, "items": rows}
+    
+    return {
+        "total": total,
+        "count": len(rows),
+        "next": next_offset,
+        "items": rows
+    }
