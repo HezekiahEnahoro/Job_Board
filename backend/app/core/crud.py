@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import select, func, and_, exists
+from sqlalchemy import select, func, and_, exists, text
 from datetime import datetime, timedelta
 from . import models, schemas
 from sqlalchemy import cast, String, any_
@@ -91,15 +91,10 @@ def list_jobs_paginated(
         )
     
     if skill:
-        # Check if the skill exists in the skills array (case-insensitive)
+        # Skills is stored as JSON array, use PostgreSQL's jsonb_array_elements_text
         skill_lower = skill.strip().lower()
-        # Use PostgreSQL's array functions
         stmt = stmt.where(
-            func.exists(
-                select(1).where(
-                    func.lower(func.unnest(models.Job.skills)) == skill_lower
-                )
-            )
+            text(f"EXISTS (SELECT 1 FROM jsonb_array_elements_text(skills) AS skill WHERE LOWER(skill) LIKE '%{skill_lower}%')")
         )
     
     if location:
