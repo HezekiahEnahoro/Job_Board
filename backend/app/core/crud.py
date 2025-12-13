@@ -2,8 +2,6 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select, func, and_, exists, text
 from datetime import datetime, timedelta
 from . import models, schemas
-from sqlalchemy import cast, String, any_
-from sqlalchemy.dialects.postgresql import ARRAY
 
 def _find_existing(db: Session, title: str, company: str, canonical_url: str | None):
     if not canonical_url:
@@ -20,7 +18,6 @@ def _find_existing(db: Session, title: str, company: str, canonical_url: str | N
 def upsert_job(db: Session, payload: schemas.JobCreate) -> models.Job:
     existing = _find_existing(db, payload.title, payload.company, payload.canonical_url or "")
     if existing:
-        # update lightweight fields
         existing.last_seen_at = datetime.utcnow()
         if payload.salary_min is not None: existing.salary_min = payload.salary_min
         if payload.salary_max is not None: existing.salary_max = payload.salary_max
@@ -91,11 +88,11 @@ def list_jobs_paginated(
         )
     
     if skill:
-        # Skills is stored as JSON array, use PostgreSQL's jsonb_array_elements_text
-        skill_lower = skill.strip().lower()
+        # Skills is JSON (not JSONB), use json_array_elements_text with parameterized query
+        skill_pattern = f"%{skill.strip().lower()}%"
         stmt = stmt.where(
-            text(f"EXISTS (SELECT 1 FROM jsonb_array_elements_text(skills) AS skill WHERE LOWER(skill) LIKE '%{skill_lower}%')")
-        )
+            text("EXISTS (SELECT 1 FROM json_array_elements_text(skills) AS skill WHERE LOWER(skill) LIKE :skill_pattern)")
+        ).params(skill_pattern=skill_pattern)
     
     if location:
         stmt = stmt.where(func.lower(models.Job.location).like(f"%{location.lower()}%"))
