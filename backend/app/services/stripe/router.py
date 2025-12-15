@@ -114,20 +114,32 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
     except stripe.error.SignatureVerificationError:
         raise HTTPException(status_code=400, detail="Invalid signature")
     
+    print(f"📨 Received Stripe event: {event['type']}")  # Debug log
+    
     # Handle different event types
     if event['type'] == 'checkout.session.completed':
         session = event['data']['object']
-        user_id = int(session['client_reference_id'])
+        
+        # Get user_id from client_reference_id
+        user_id = session.get('client_reference_id')
+        if not user_id:
+            print(f"❌ No client_reference_id in session: {session}")
+            return {"status": "error", "message": "No user_id"}
+        
+        user_id = int(user_id)
         
         # Update user to Pro
         user = db.query(User).filter(User.id == user_id).first()
         if user:
             user.is_pro = True
             user.stripe_customer_id = session['customer']
-            user.stripe_subscription_id = session['subscription']
+            user.stripe_subscription_id = session.get('subscription')
             user.subscription_status = 'active'
             db.commit()
-            print(f"✅ User {user.email} upgraded to Pro")
+            db.refresh(user)
+            print(f"✅ User {user.email} upgraded to Pro! is_pro={user.is_pro}")
+        else:
+            print(f"❌ User with ID {user_id} not found")
     
     elif event['type'] == 'customer.subscription.updated':
         subscription = event['data']['object']

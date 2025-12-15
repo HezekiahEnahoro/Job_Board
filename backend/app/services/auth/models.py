@@ -15,6 +15,7 @@ class User(Base):
     is_pro = Column(Boolean, default=False)
     
     # Stripe fields (NEW)
+    is_pro = Column(Boolean, default=False, nullable=False)
     stripe_customer_id = Column(String, nullable=True, unique=True)
     stripe_subscription_id = Column(String, nullable=True)
     subscription_status = Column(String, nullable=True)  # active, canceled, past_due, etc.

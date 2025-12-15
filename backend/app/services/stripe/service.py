@@ -7,37 +7,27 @@ stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 PRICE_ID = os.getenv("STRIPE_PRICE_ID")
 WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 
-def create_checkout_session(user_email: str, user_id: int, success_url: str, cancel_url: str) -> dict:
-    """Create a Stripe Checkout session for Pro subscription"""
+def create_checkout_session(user_email: str, user_id: int, success_url: str, cancel_url: str):
+    """Create Stripe Checkout session"""
     
     try:
         session = stripe.checkout.Session.create(
+            customer_email=user_email,
+            client_reference_id=str(user_id),  # ✅ CRITICAL: Pass user_id
             payment_method_types=['card'],
-            line_items=[
-                {
-                    'price': PRICE_ID,
-                    'quantity': 1,
-                },
-            ],
+            line_items=[{
+                'price': PRICE_ID,
+                'quantity': 1,
+            }],
             mode='subscription',
             success_url=success_url,
             cancel_url=cancel_url,
-            customer_email=user_email,
-            client_reference_id=str(user_id),
-            metadata={
-                'user_id': user_id,
-            },
-            allow_promotion_codes=True,
         )
         
-        return {
-            'checkout_url': session.url,
-            'session_id': session.id,
-        }
-    
+        return {'checkout_url': session.url}
     except Exception as e:
-        print(f"❌ Stripe checkout error: {e}")
-        raise ValueError(f"Failed to create checkout session: {str(e)}")
+        print(f"❌ Stripe error: {e}")
+        raise
 
 
 def create_customer_portal_session(customer_id: str, return_url: str) -> dict:

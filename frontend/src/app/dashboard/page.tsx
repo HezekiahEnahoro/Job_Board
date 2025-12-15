@@ -183,7 +183,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header with Pro Badge */}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold">Application Tracker</h1>
@@ -198,6 +198,8 @@ export default function DashboardPage() {
           </span>
         )}
       </div>
+
+      {/* Upgrade Banner - ONLY show if NOT pro */}
       {!user?.is_pro && (
         <Card className="p-6 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950 border-blue-200 dark:border-blue-800">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -219,6 +221,8 @@ export default function DashboardPage() {
           </div>
         </Card>
       )}
+
+      {/* Manage Subscription Button - ONLY show if pro */}
       {user?.is_pro && (
         <Button
           variant="outline"
