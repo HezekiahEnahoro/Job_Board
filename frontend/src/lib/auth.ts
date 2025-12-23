@@ -76,7 +76,11 @@ export async function getCurrentUser(): Promise<User | null> {
   
   try {
     const res = await fetch(`${API}/auth/me`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { 
+        Authorization: `Bearer ${token}`,
+        'Cache-Control': 'no-cache',  // ✅ FORCE FRESH DATA
+        'Pragma': 'no-cache'           // ✅ FORCE FRESH DATA
+      },
     });
     
     if (!res.ok) {
@@ -87,8 +91,15 @@ export async function getCurrentUser(): Promise<User | null> {
       return null;
     }
     
-    return res.json();
+    const user = await res.json();
+    
+    // Debug log
+    console.log('👤 Current user:', user);
+    console.log('💎 Is Pro:', user.is_pro);
+    
+    return user;
   } catch (err) {
+    console.error('❌ Error fetching user:', err);
     return null;
   }
 }
