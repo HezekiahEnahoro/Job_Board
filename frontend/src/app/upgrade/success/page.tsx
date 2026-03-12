@@ -50,7 +50,9 @@ function SuccessContent() {
 
             {/* Features List */}
             <div className="rounded-2xl border border-white/10 bg-white/5 p-6 mb-8">
-              <h3 className="font-bold mb-4 text-left">What's unlocked:</h3>
+              <h3 className="font-bold mb-4 text-left">
+                What&apos;s unlocked:
+              </h3>
               <ul className="text-sm text-left space-y-3">
                 <li className="flex items-center gap-3">
                   <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" />

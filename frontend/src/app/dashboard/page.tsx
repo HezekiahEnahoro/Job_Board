@@ -404,7 +404,7 @@ export default function DashboardPage() {
             <h3 className="text-2xl font-bold mb-3">No applications yet</h3>
             <p className="text-gray-400 max-w-md mx-auto mb-8">
               Start tracking your job applications to see them here. Browse jobs
-              and click "Track" to get started!
+              and click &quot;Track&quot; to get started!
             </p>
             <Link href="/jobs">
               <Button

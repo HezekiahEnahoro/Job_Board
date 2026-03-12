@@ -357,7 +357,7 @@ export default function AnalyticsPage() {
                 <CheckCircle2 className="h-5 w-5 text-green-400 shrink-0 mt-0.5" />
                 <p className="text-gray-300">
                   <strong className="text-white">Great response rate!</strong>{" "}
-                  You're doing better than average. Keep it up!
+                  You&apos;re doing better than average. Keep it up!
                 </p>
               </div>
             )}
