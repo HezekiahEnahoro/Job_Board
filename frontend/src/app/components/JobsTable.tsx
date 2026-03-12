@@ -16,6 +16,19 @@ import ViewJob from "./ViewJob";
 import { getErrorMessage } from "@/lib/getErrorMessage";
 import { getToken } from "@/lib/auth";
 import { toast } from "sonner";
+import {
+  Search,
+  MapPin,
+  Filter,
+  Briefcase,
+  ExternalLink,
+  Plus,
+  ChevronLeft,
+  ChevronRight,
+  Sparkles,
+  Building2,
+  Calendar,
+} from "lucide-react";
 
 const API = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
 
@@ -134,157 +147,239 @@ export default function JobsTable() {
   };
 
   return (
-    <div className="space-y-4">
-      {/* Filters */}
-      <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 items-end">
-        <div className="space-y-1">
-          <Label htmlFor="q">Search</Label>
-          <Input
-            id="q"
-            placeholder="Search…"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-          />
+    <div className="space-y-6">
+      {/* Filters Card */}
+      <div className="group relative">
+        <div className="absolute -inset-px bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-2xl opacity-0 group-hover:opacity-100 blur transition"></div>
+        <div className="relative rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl p-6">
+          <div className="flex items-center gap-2 mb-6">
+            <Filter className="h-5 w-5 text-blue-400" />
+            <h3 className="text-lg font-bold">Filters</h3>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="q" className="text-sm text-gray-400">
+                <Search className="h-4 w-4 inline mr-1" />
+                Search
+              </Label>
+              <Input
+                id="q"
+                placeholder="Job title or keyword..."
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-blue-500/50"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="skill" className="text-sm text-gray-400">
+                <Sparkles className="h-4 w-4 inline mr-1" />
+                Skill
+              </Label>
+              <Input
+                id="skill"
+                placeholder="e.g. React, Python..."
+                value={skill}
+                onChange={(e) => setSkill(e.target.value)}
+                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-purple-500/50"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="loc" className="text-sm text-gray-400">
+                <MapPin className="h-4 w-4 inline mr-1" />
+                Location
+              </Label>
+              <Input
+                id="loc"
+                placeholder="City or remote..."
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-green-500/50"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm text-gray-400">Remote</Label>
+              <Select
+                value={remote}
+                onValueChange={(v: RemoteFilter) => setRemote(v)}
+              >
+                <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                  <SelectValue placeholder="Any" />
+                </SelectTrigger>
+                <SelectContent className="bg-gray-900 border-white/10">
+                  <SelectItem value="any">Any</SelectItem>
+                  <SelectItem value="true">Remote</SelectItem>
+                  <SelectItem value="false">On-site</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-end">
+              <Button
+                onClick={applyFilters}
+                className="w-full h-10 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+              >
+                Apply Filters
+              </Button>
+            </div>
+          </div>
         </div>
-        <div className="space-y-1">
-          <Label htmlFor="skill">Skill</Label>
-          <Input
-            id="skill"
-            placeholder="e.g. react"
-            value={skill}
-            onChange={(e) => setSkill(e.target.value)}
-          />
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="loc">Location</Label>
-          <Input
-            id="loc"
-            placeholder="e.g. remote, london"
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-          />
-        </div>
-        <div className="space-y-1">
-          <Label>Remote</Label>
-          <Select value={remote} onValueChange={(v: RemoteFilter) => setRemote(v)}>
-            <SelectTrigger>
-              <SelectValue placeholder="Any" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="any">Any</SelectItem>
-              <SelectItem value="true">Remote</SelectItem>
-              <SelectItem value="false">Onsite</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <Button onClick={applyFilters} className="h-10">
-          Apply
-        </Button>
       </div>
 
       {/* Error State */}
-      {error && <p className="text-sm text-red-600">Error: {error}</p>}
+      {error && (
+        <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-6 text-center">
+          <p className="text-red-400">Error: {error}</p>
+        </div>
+      )}
 
       {/* Loading State */}
       {loading && (
-        <div className="flex justify-center items-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl p-20 text-center">
+          <div className="inline-flex p-4 rounded-2xl bg-gradient-to-br from-blue-600 to-purple-600 mb-4">
+            <div className="animate-spin rounded-full h-8 w-8 border-2 border-white border-t-transparent"></div>
+          </div>
+          <p className="text-gray-400">Loading jobs...</p>
         </div>
       )}
 
       {/* Empty State */}
       {!loading && page && page.items.length === 0 && (
-        <div className="text-center py-12 text-gray-500 bg-gray-50 dark:bg-gray-900 rounded-lg border-2 border-dashed">
-          <p className="text-lg font-semibold">No jobs found</p>
-          <p className="text-sm mt-2">Try adjusting your filters</p>
+        <div className="rounded-2xl border border-dashed border-white/20 bg-white/[0.02] p-20 text-center">
+          <div className="inline-flex p-6 rounded-2xl bg-gradient-to-br from-gray-800 to-gray-900 mb-6">
+            <Briefcase className="h-12 w-12 text-gray-600" />
+          </div>
+          <h3 className="text-2xl font-bold mb-2">No jobs found</h3>
+          <p className="text-gray-400 mb-6">
+            Try adjusting your filters or search terms
+          </p>
+          <Button
+            onClick={() => {
+              setQ("");
+              setSkill("");
+              setLocation("");
+              setRemote("any");
+              setOffset(0);
+            }}
+            variant="outline"
+            className="border-white/10 bg-white/5 hover:bg-white/10"
+          >
+            Clear Filters
+          </Button>
         </div>
       )}
 
-      {/* Jobs Table */}
+      {/* Jobs List */}
       {!loading && page && page.items.length > 0 && (
-        <>
-          <div className="text-sm text-gray-600 dark:text-neutral-400">
-            Total: {page.total} jobs
+        <div className="space-y-6">
+          {/* Results Count */}
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-gray-400">
+              Showing {offset + 1} - {Math.min(offset + 25, page.total)} of{" "}
+              <span className="font-bold text-white">{page.total}</span> jobs
+            </p>
           </div>
-          
-          <div className="overflow-hidden border rounded-2xl bg-white dark:bg-neutral-900 dark:border-neutral-800">
-            <table className="min-w-full divide-y divide-gray-100 dark:divide-neutral-800">
-              <thead className="bg-gray-50 dark:bg-neutral-800/60">
-                <tr className="text-left text-xs font-semibold text-gray-600 dark:text-neutral-300 uppercase tracking-wider">
-                  <th className="px-4 py-3">Title</th>
-                  <th className="px-4 py-3">Company</th>
-                  <th className="px-4 py-3">Location</th>
-                  <th className="px-4 py-3">Posted</th>
-                  <th className="px-4 py-3">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-neutral-800">
-                {page.items.map((job) => (
-                  <tr
-                    key={job.id}
-                    className="hover:bg-gray-50 dark:hover:bg-neutral-800/50"
-                  >
-                    <td className="px-4 py-3">
-                      {job.apply_url ? (
-                        <a className="font-medium text-blue-600 hover:underline"
-                          href={job.apply_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          {job.title}
-                        </a>
-                      ) : (
-                        job.title
-                      )}
-                    </td>
-                    <td className="px-4 py-3">{job.company}</td>
-                    <td className="px-4 py-3">
-                      {job.location || (job.remote_flag ? "Remote" : "-")}
-                    </td>
-                    <td className="px-4 py-3">
-                      {job.posted_at
-                        ? new Date(job.posted_at).toLocaleDateString()
-                        : "-"}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-2">
-                        <ViewJob job={job} />
-                        <Button
-                          onClick={() => trackJob(job.id)}
-                          size="sm"
-                          variant="outline"
-                        >
-                          Track
-                        </Button>
+
+          {/* Jobs Grid */}
+          <div className="space-y-4">
+            {page.items.map((job) => (
+              <div key={job.id} className="group relative">
+                <div className="absolute -inset-px bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-2xl opacity-0 group-hover:opacity-100 blur transition"></div>
+                <div className="relative rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl p-6 group-hover:border-white/20 transition">
+                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                    {/* Job Info */}
+                    <div className="flex-1 space-y-3">
+                      <div>
+                        {job.apply_url ? (
+                          
+                          <a  href={job.apply_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="group/link inline-flex items-center gap-2 text-xl font-bold hover:text-blue-400 transition"
+                          >
+                            {job.title}
+                            <ExternalLink className="h-4 w-4 opacity-0 group-hover/link:opacity-100 transition" />
+                          </a>
+                        ) : (
+                          <h3 className="text-xl font-bold">{job.title}</h3>
+                        )}
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+
+                      <div className="flex flex-wrap items-center gap-4 text-sm text-gray-400">
+                        <div className="flex items-center gap-2">
+                          <Building2 className="h-4 w-4" />
+                          <span className="font-medium">{job.company}</span>
+                        </div>
+
+                        {(job.location || job.remote_flag) && (
+                          <div className="flex items-center gap-2">
+                            <MapPin className="h-4 w-4" />
+                            <span>
+                              {job.location || (job.remote_flag ? "Remote" : "-")}
+                            </span>
+                          </div>
+                        )}
+
+                        {job.posted_at && (
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4" />
+                            <span>
+                              {new Date(job.posted_at).toLocaleDateString()}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex gap-2">
+                      <ViewJob job={job} />
+                      <Button
+                        onClick={() => trackJob(job.id)}
+                        size="sm"
+                        className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg shadow-blue-500/25"
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        Track
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
 
           {/* Pagination */}
-          <div className="flex gap-2 justify-between items-center">
+          <div className="flex items-center justify-between pt-6 border-t border-white/10">
             <Button
               variant="outline"
               onClick={() => setOffset(Math.max(0, offset - 25))}
               disabled={offset === 0}
+              className="border-white/10 bg-white/5 hover:bg-white/10 disabled:opacity-30"
             >
-              ← Previous
+              <ChevronLeft className="h-4 w-4 mr-1" />
+              Previous
             </Button>
-            <span className="text-sm text-gray-600">
-              Showing {offset + 1} - {Math.min(offset + 25, page.total)} of {page.total}
+
+            <span className="text-sm text-gray-400">
+              Page {Math.floor(offset / 25) + 1} of{" "}
+              {Math.ceil(page.total / 25)}
             </span>
+
             <Button
               variant="outline"
               onClick={() => (page.next != null ? setOffset(page.next) : null)}
               disabled={page.next == null}
+              className="border-white/10 bg-white/5 hover:bg-white/10 disabled:opacity-30"
             >
-              Next →
+              Next
+              <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
           </div>
-        </>
+        </div>
       )}
     </div>
   );

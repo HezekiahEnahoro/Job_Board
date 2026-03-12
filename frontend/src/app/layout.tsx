@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import "./globals.css";
-import { ThemeProvider } from "./components/ThemeProvider";
+import "./globals.css"; 
 import { Navbar, Footer } from "./components/LayoutParts";
 import { Toaster } from "sonner";
 
@@ -32,17 +31,35 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="min-h-screen flex flex-col bg-gray-50 text-gray-900 dark:bg-neutral-900 dark:text-neutral-100">
-        <ThemeProvider>
-          <div className="flex min-h-screen flex-col">
-            <Navbar />
-            <main className="container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-6 flex-1">
-              {children}
-            </main>
-            <Footer />
-          </div>
-          <Toaster position="top-right" richColors />
-        </ThemeProvider>
+      <body className="min-h-screen bg-black text-white antialiased">
+        {/* Background mesh gradient */}
+        <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-gray-900 via-black to-black"></div>
+
+        {/* Animated gradient orbs */}
+        <div className="fixed inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-[128px] animate-float"></div>
+          <div className="absolute top-1/3 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-[128px] animate-float-delayed"></div>
+        </div>
+
+        <div className="relative z-10 flex min-h-screen flex-col">
+          <Navbar />
+          <main className="flex-1">{children}</main>
+          <Footer />
+        </div>
+
+        <Toaster
+          position="top-right"
+          richColors
+          theme="dark"
+          toastOptions={{
+            style: {
+              background: "rgba(17, 24, 39, 0.8)",
+              backdropFilter: "blur(12px)",
+              border: "1px solid rgba(255, 255, 255, 0.1)",
+              color: "white",
+            },
+          }}
+        />
       </body>
     </html>
   );
