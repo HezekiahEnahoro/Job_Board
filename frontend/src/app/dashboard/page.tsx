@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { getToken, getCurrentUser, type User } from "@/lib/auth";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -92,7 +92,7 @@ const STATUS_CONFIG = {
   },
 };
 
-export default function DashboardPage() {
+function DashboardContent() {
   const [user, setUser] = useState<User | null>(null);
   const [apps, setApps] = useState<Application[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
@@ -101,7 +101,7 @@ export default function DashboardPage() {
   const [editingNotes, setEditingNotes] = useState<number | null>(null);
   const [noteText, setNoteText] = useState("");
   const router = useRouter();
-  const searchParams = useSearchParams(); // ADD THIS
+  const searchParams = useSearchParams(); 
 
   useEffect(() => {
     const token = getToken();
@@ -558,5 +558,25 @@ export default function DashboardPage() {
         </div>
       )}
     </div>
+  );
+}
+
+// WRAP IN SUSPENSE
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={
+      <div className="container mx-auto max-w-7xl px-6 lg:px-8 py-8">
+        <div className="animate-pulse space-y-6">
+          <div className="h-12 bg-white/5 rounded-lg w-64"></div>
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="h-24 bg-white/5 rounded-xl"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    }>
+      <DashboardContent />
+    </Suspense>
   );
 }
