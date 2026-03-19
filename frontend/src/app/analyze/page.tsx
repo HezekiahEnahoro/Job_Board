@@ -66,6 +66,7 @@ export default function AnalyzePage() {
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [usage, setUsage] = useState<Usage | null>(null);
+  const [loadingJobs, setLoadingJobs] = useState(false);
 
   // Manual job entry
   const [manualMode, setManualMode] = useState(false);
@@ -85,51 +86,65 @@ export default function AnalyzePage() {
       return;
     }
 
-    loadJobs();
     loadUsage();
   }, [router]);
+  
+    const loadUsage = async () => {
+      const token = getToken();
+      if (!token) return;
+  
+      try {
+        const res = await fetch(`${API}/ai/usage`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setUsage(data);
+        }
+      } catch (error) {
+        console.error("Failed to load usage stats:", error);
+      }
+    };
 
-  const loadJobs = async () => {
+
+  const loadJobs = async (query: string = "") => {
     const token = getToken();
     if (!token) return;
 
-    const res = await fetch(`${API}/jobs/page?limit=100&offset=0`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    if (res.ok) {
-      const data = await res.json();
-      setJobs(data.items || []);
-    }
-  };
-
-  const loadUsage = async () => {
-    const token = getToken();
-    if (!token) return;
+    setLoadingJobs(true);
 
     try {
-      const res = await fetch(`${API}/ai/usage`, {
+      const params = new URLSearchParams({
+        limit: "200",
+        offset: "0",
+        days: "30",
+      });
+
+      if (query.trim()) {
+        params.set("q", query.trim());
+      }
+
+      const res = await fetch(`${API}/jobs/page?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+
       if (res.ok) {
         const data = await res.json();
-        setUsage(data);
+        setJobs(data.items || []);
       }
-    } catch (error) {
-      console.error("Failed to load usage stats:", error);
+    } finally {
+      setLoadingJobs(false);
     }
   };
 
-  const filteredJobs = useMemo(() => {
-    if (!searchQuery.trim()) return jobs;
+  // Debounced search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadJobs(searchQuery);
+    }, 300);
 
-    const query = searchQuery.toLowerCase();
-    return jobs.filter(
-      (job) =>
-        job.title.toLowerCase().includes(query) ||
-        job.company.toLowerCase().includes(query),
-    );
-  }, [jobs, searchQuery]);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const selectedJob = jobs.find((j) => j.id.toString() === selectedJobId);
 
@@ -541,12 +556,17 @@ export default function AnalyzePage() {
 
               {/* Job Grid */}
               <div className="max-h-[400px] overflow-y-auto space-y-3 custom-scrollbar">
-                {filteredJobs.length === 0 ? (
+                {loadingJobs ? (
+                  <div className="text-center text-gray-400 py-8">
+                    <div className="animate-spin rounded-full h-6 w-6 border-2 border-white border-t-transparent mx-auto mb-2"></div>
+                    <p>Searching jobs...</p>
+                  </div>
+                ) : jobs.length === 0 ? (
                   <p className="text-center text-gray-400 py-8">
-                    No jobs found
+                    No jobs found matching &ldquo;{searchQuery}&ldquo;
                   </p>
                 ) : (
-                  filteredJobs.map((job) => (
+                  jobs.map((job) => (
                     <button
                       key={job.id}
                       onClick={() => setSelectedJobId(job.id.toString())}
