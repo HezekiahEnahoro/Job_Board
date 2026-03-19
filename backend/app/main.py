@@ -78,13 +78,15 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="JobBoard API", version="0.5.1", lifespan=lifespan)
 
-# CORS - CRITICAL: Must be before other middleware
+# CORS Configuration
+ALLOW_ORIGINS = os.getenv("ALLOW_ORIGINS", "http://localhost:3000").split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=ALLOW_ORIGINS,  # Allow specific origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all methods
+    allow_headers=["*"],  # Allow all headers
 )
 
 # Include routers
