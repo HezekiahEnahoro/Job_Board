@@ -1,22 +1,30 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { getToken, getCurrentUser } from "@/lib/auth";
+import { getToken } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { AlertCircle, CheckCircle2, Upload, Sparkles } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  AlertCircle,
+  CheckCircle2,
+  Upload,
+  Sparkles,
+  Brain,
+  Target,
+  Zap,
+  FileText,
+  Crown,
+  Search,
+  Edit3,
+  ChevronRight,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
+import Link from "next/link";
 
 const API = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
 
@@ -24,6 +32,7 @@ type Job = {
   id: number;
   title: string;
   company: string;
+  description_text?: string;
 };
 
 type AnalysisResult = {
@@ -39,7 +48,16 @@ type AnalysisResult = {
   analysis_time_seconds: number;
 };
 
+type Usage = {
+  analyses_used: number;
+  analyses_limit: number | null;
+  remaining: number | null;
+  is_pro: boolean;
+  can_analyze: boolean;
+};
+
 export default function AnalyzePage() {
+  const [step, setStep] = useState(1); // Step wizard
   const [jobs, setJobs] = useState<Job[]>([]);
   const [selectedJobId, setSelectedJobId] = useState<string>("");
   const [file, setFile] = useState<File | null>(null);
@@ -47,6 +65,17 @@ export default function AnalyzePage() {
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [usage, setUsage] = useState<Usage | null>(null);
+
+  // Manual job entry
+  const [manualMode, setManualMode] = useState(false);
+  const [manualJobTitle, setManualJobTitle] = useState("");
+  const [manualCompany, setManualCompany] = useState("");
+  const [manualDescription, setManualDescription] = useState("");
+
+  // Search filter
+  const [searchQuery, setSearchQuery] = useState("");
+
   const router = useRouter();
 
   useEffect(() => {
@@ -56,8 +85,8 @@ export default function AnalyzePage() {
       return;
     }
 
-    // Load jobs for dropdown
     loadJobs();
+    loadUsage();
   }, [router]);
 
   const loadJobs = async () => {
@@ -74,11 +103,40 @@ export default function AnalyzePage() {
     }
   };
 
+  const loadUsage = async () => {
+    const token = getToken();
+    if (!token) return;
+
+    try {
+      const res = await fetch(`${API}/ai/usage`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setUsage(data);
+      }
+    } catch (error) {
+      console.error("Failed to load usage stats:", error);
+    }
+  };
+
+  const filteredJobs = useMemo(() => {
+    if (!searchQuery.trim()) return jobs;
+
+    const query = searchQuery.toLowerCase();
+    return jobs.filter(
+      (job) =>
+        job.title.toLowerCase().includes(query) ||
+        job.company.toLowerCase().includes(query),
+    );
+  }, [jobs, searchQuery]);
+
+  const selectedJob = jobs.find((j) => j.id.toString() === selectedJobId);
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
 
-      // Validate file type
       if (
         !selectedFile.name.endsWith(".pdf") &&
         !selectedFile.name.endsWith(".docx")
@@ -87,7 +145,6 @@ export default function AnalyzePage() {
         return;
       }
 
-      // Validate file size (max 5MB)
       if (selectedFile.size > 5 * 1024 * 1024) {
         setError("File size must be less than 5MB");
         return;
@@ -99,18 +156,45 @@ export default function AnalyzePage() {
   };
 
   const handleAnalyze = async () => {
-    if (!file || !selectedJobId) {
-      setError("Please select a resume and a job");
+    if (!file) {
+      setError("Please upload a resume");
+      return;
+    }
+
+    if (!manualMode && !selectedJobId) {
+      setError("Please select a job");
+      return;
+    }
+
+    if (
+      manualMode &&
+      (!manualJobTitle || !manualCompany || !manualDescription)
+    ) {
+      setError("Please fill in all job details");
+      return;
+    }
+
+    if (usage && !usage.can_analyze) {
+      toast.error("You've reached your free tier limit. Upgrade to Pro!");
       return;
     }
 
     setAnalyzing(true);
     setError(null);
-    toast.loading("Analyzing your resume...", { id: "analyzing" });
+    toast.loading("Analyzing your resume with AI...", { id: "analyzing" });
 
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("job_id", selectedJobId.toString());
+
+    if (manualMode) {
+      formData.append("job_id", "0");
+      formData.append("manual_job_title", manualJobTitle);
+      formData.append("manual_company", manualCompany);
+      formData.append("manual_description", manualDescription);
+    } else {
+      formData.append("job_id", selectedJobId.toString());
+    }
+
     formData.append("generate_cover", generateCover.toString());
 
     try {
@@ -131,6 +215,7 @@ export default function AnalyzePage() {
       const data = await res.json();
       setResult(data);
       toast.success("Analysis complete!", { id: "analyzing" });
+      loadUsage();
     } catch (err: unknown) {
       const error = err as Error;
       setError(error.message || "Analysis failed");
@@ -141,9 +226,9 @@ export default function AnalyzePage() {
   };
 
   const getScoreColor = (score: number) => {
-    if (score >= 80) return "text-green-600";
-    if (score >= 60) return "text-yellow-600";
-    return "text-red-600";
+    if (score >= 80) return "from-green-500 to-emerald-500";
+    if (score >= 60) return "from-yellow-500 to-orange-500";
+    return "from-red-500 to-rose-500";
   };
 
   const getScoreLabel = (score: number) => {
@@ -152,224 +237,457 @@ export default function AnalyzePage() {
     return "Needs Improvement";
   };
 
-  return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <Sparkles className="w-8 h-8 text-blue-600" />
-        <div>
-          <h1 className="text-2xl font-bold">AI Resume Analyzer</h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            Get instant feedback on your resume match with any job
-          </p>
+  // Show results
+  if (result) {
+    return (
+      <div className="container mx-auto max-w-5xl px-6 py-12 space-y-8">
+        {/* Match Score */}
+        <div className="group relative">
+          <div
+            className={`absolute -inset-px bg-gradient-to-r ${getScoreColor(result.match_score)} rounded-3xl blur-xl opacity-75`}></div>
+          <div className="relative rounded-3xl border border-white/10 bg-black/40 backdrop-blur-xl p-16 text-center">
+            <Target className="h-12 w-12 text-white mx-auto mb-6 opacity-50" />
+            <p className="text-sm text-gray-400 uppercase tracking-widest mb-3">
+              Match Score
+            </p>
+            <div
+              className={`text-9xl font-black bg-gradient-to-r ${getScoreColor(result.match_score)} bg-clip-text text-transparent mb-6`}>
+              {result.match_score.toFixed(0)}%
+            </div>
+            <p className="text-3xl font-bold mb-2">
+              {getScoreLabel(result.match_score)}
+            </p>
+            <p className="text-gray-400 text-lg">
+              {result.job_title} @ {result.company}
+            </p>
+          </div>
         </div>
+
+        {/* Strengths */}
+        {result.strengths && result.strengths.length > 0 && (
+          <div className="rounded-2xl border border-white/10 bg-black/20 backdrop-blur-xl p-8">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 rounded-lg bg-green-500/10">
+                <CheckCircle2 className="w-6 h-6 text-green-400" />
+              </div>
+              <h3 className="text-2xl font-bold">Your Strengths</h3>
+            </div>
+            <div className="grid gap-4">
+              {result.strengths.map((strength, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-start gap-4 p-4 rounded-xl bg-white/5 border border-white/5">
+                  <CheckCircle2 className="w-5 h-5 text-green-400 shrink-0 mt-1" />
+                  <p className="text-gray-300 leading-relaxed">{strength}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Missing Keywords */}
+        {result.missing_keywords && result.missing_keywords.length > 0 && (
+          <div className="rounded-2xl border border-white/10 bg-black/20 backdrop-blur-xl p-8">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 rounded-lg bg-yellow-500/10">
+                <AlertCircle className="w-6 h-6 text-yellow-400" />
+              </div>
+              <h3 className="text-2xl font-bold">Missing Keywords</h3>
+            </div>
+            <p className="text-gray-400 mb-4">
+              Consider adding these to improve your match:
+            </p>
+            <div className="flex flex-wrap gap-3">
+              {result.missing_keywords.map((keyword, idx) => (
+                <span
+                  key={idx}
+                  className="px-5 py-2.5 bg-yellow-500/10 text-yellow-400 rounded-full text-sm font-medium border border-yellow-500/20">
+                  {keyword}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Suggestions */}
+        {result.suggestions && (
+          <div className="rounded-2xl border border-white/10 bg-black/20 backdrop-blur-xl p-8">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 rounded-lg bg-blue-500/10">
+                <Zap className="w-6 h-6 text-blue-400" />
+              </div>
+              <h3 className="text-2xl font-bold">AI Suggestions</h3>
+            </div>
+            <p className="text-gray-300 leading-relaxed text-lg">
+              {result.suggestions}
+            </p>
+          </div>
+        )}
+
+        {/* Cover Letter */}
+        {result.cover_letter && (
+          <div className="rounded-2xl border border-white/10 bg-black/20 backdrop-blur-xl p-8">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 rounded-lg bg-purple-500/10">
+                <FileText className="w-6 h-6 text-purple-400" />
+              </div>
+              <h3 className="text-2xl font-bold">Generated Cover Letter</h3>
+            </div>
+            <div className="bg-white/5 p-6 rounded-xl border border-white/5 whitespace-pre-wrap text-gray-300 leading-relaxed mb-4">
+              {result.cover_letter}
+            </div>
+            <Button
+              className="bg-purple-600 hover:bg-purple-700"
+              onClick={() => {
+                navigator.clipboard.writeText(result.cover_letter!);
+                toast.success("Cover letter copied!");
+              }}>
+              Copy to Clipboard
+            </Button>
+          </div>
+        )}
+
+        {/* Actions */}
+        <div className="flex gap-4">
+          <Button
+            variant="outline"
+            onClick={() => {
+              setResult(null);
+              setFile(null);
+              setSelectedJobId("");
+              setManualJobTitle("");
+              setManualCompany("");
+              setManualDescription("");
+              setStep(1);
+            }}
+            className="flex-1 h-14 border-white/10 bg-white/5 hover:bg-white/10 text-base">
+            Analyze Another Resume
+          </Button>
+          <Button
+            onClick={() => router.push("/dashboard")}
+            className="flex-1 h-14 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-base">
+            Go to Dashboard
+          </Button>
+        </div>
+
+        <p className="text-center text-sm text-gray-500">
+          ⚡ Completed in {result.analysis_time_seconds.toFixed(1)}s
+        </p>
+      </div>
+    );
+  }
+
+  // Main wizard flow
+  return (
+    <div className="container mx-auto max-w-4xl px-6 py-12">
+      {/* Header */}
+      <div className="text-center mb-12">
+        <div className="inline-flex p-4 rounded-2xl bg-gradient-to-br from-purple-600 to-pink-600 mb-6">
+          <Brain className="h-8 w-8 text-white" />
+        </div>
+        <h1 className="text-5xl font-black tracking-tight mb-4">
+          AI Resume Analyzer
+        </h1>
+        <p className="text-gray-400 text-xl">
+          Get instant AI-powered feedback on your resume
+        </p>
       </div>
 
-      {/* Upload Form */}
-      {!result && (
-        <Card className="p-6 space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="resume">Upload Resume (PDF or DOCX)</Label>
-            <div className="flex gap-3">
-              <Input
-                id="resume"
-                type="file"
-                accept=".pdf,.docx"
-                onChange={handleFileChange}
-                className="flex-1"
-              />
-              {file && (
-                <CheckCircle2 className="w-6 h-6 text-green-600 flex-shrink-0" />
-              )}
-            </div>
-            {file && (
-              <p className="text-sm text-gray-600">
-                Selected: {file.name} ({(file.size / 1024).toFixed(0)} KB)
+      {/* Usage Stats */}
+      {usage && !usage.is_pro && (
+        <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl p-6 mb-8">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Target className="h-5 w-5 text-blue-400" />
+              <p className="text-sm text-gray-300">
+                <span className="font-bold text-white">
+                  {usage.analyses_used}/{usage.analyses_limit}
+                </span>{" "}
+                analyses used this month
               </p>
+            </div>
+            {usage.remaining === 0 && (
+              <Link href="/upgrade">
+                <Button
+                  size="sm"
+                  className="bg-gradient-to-r from-blue-600 to-purple-600">
+                  <Crown className="h-4 w-4 mr-1" />
+                  Upgrade
+                </Button>
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Step Indicator */}
+      <div className="flex items-center justify-center gap-4 mb-12">
+        {[1, 2, 3].map((s) => (
+          <div key={s} className="flex items-center gap-4">
+            <div
+              className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg transition ${
+                step >= s
+                  ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white"
+                  : "bg-white/5 text-gray-500 border border-white/10"
+              }`}>
+              {s}
+            </div>
+            {s < 3 && (
+              <div
+                className={`w-16 h-0.5 ${step > s ? "bg-purple-600" : "bg-white/10"}`}></div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Step 1: Upload Resume */}
+      {step === 1 && (
+        <div className="rounded-3xl border border-white/10 bg-black/20 backdrop-blur-xl p-12">
+          <h2 className="text-3xl font-bold mb-3 text-center">
+            Upload Your Resume
+          </h2>
+          <p className="text-gray-400 text-center mb-8">
+            PDF or DOCX format, max 5MB
+          </p>
+
+          <div className="relative mb-6">
+            <Input
+              type="file"
+              accept=".pdf,.docx"
+              onChange={handleFileChange}
+              className="h-20 bg-white/5 border-white/10 text-white file:bg-white/10 file:text-white file:border-0 file:mr-4 file:px-6 file:h-full cursor-pointer text-lg"
+            />
+            {file && (
+              <CheckCircle2 className="absolute right-6 top-1/2 -translate-y-1/2 w-8 h-8 text-green-400" />
             )}
           </div>
 
-          <div className="space-y-2">
-            <Label>Select Job to Analyze Against</Label>
-            <Select value={selectedJobId} onValueChange={setSelectedJobId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Choose a job..." />
-              </SelectTrigger>
-              <SelectContent>
-                {jobs.map((job) => (
-                  <SelectItem key={job.id} value={job.id.toString()}>
-                    {job.title} @ {job.company}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          {file && (
+            <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4 mb-6">
+              <p className="text-green-400 font-medium">
+                ✓ {file.name} ({(file.size / 1024).toFixed(0)} KB)
+              </p>
+            </div>
+          )}
+
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 mb-6">
+              <p className="text-red-400">{error}</p>
+            </div>
+          )}
+
+          <Button
+            onClick={() => {
+              if (file) {
+                setStep(2);
+                setError(null);
+              }
+            }}
+            disabled={!file}
+            className="w-full h-16 text-lg font-bold bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:opacity-50">
+            Continue
+            <ChevronRight className="ml-2 h-5 w-5" />
+          </Button>
+        </div>
+      )}
+
+      {/* Step 2: Select or Enter Job */}
+      {step === 2 && (
+        <div className="rounded-3xl border border-white/10 bg-black/20 backdrop-blur-xl p-12">
+          <h2 className="text-3xl font-bold mb-3 text-center">
+            Choose Job Posting
+          </h2>
+          <p className="text-gray-400 text-center mb-8">
+            Select from our database or paste your own
+          </p>
+
+          {/* Mode Toggle */}
+          <div className="grid grid-cols-2 gap-4 mb-8">
+            <button
+              onClick={() => setManualMode(false)}
+              className={`p-6 rounded-2xl border transition ${
+                !manualMode
+                  ? "bg-gradient-to-br from-blue-600/20 to-purple-600/20 border-purple-500/50"
+                  : "bg-white/5 border-white/10 hover:bg-white/10"
+              }`}>
+              <Search className="h-6 w-6 mb-2 mx-auto" />
+              <p className="font-semibold">Select from Jobs</p>
+            </button>
+            <button
+              onClick={() => setManualMode(true)}
+              className={`p-6 rounded-2xl border transition ${
+                manualMode
+                  ? "bg-gradient-to-br from-purple-600/20 to-pink-600/20 border-pink-500/50"
+                  : "bg-white/5 border-white/10 hover:bg-white/10"
+              }`}>
+              <Edit3 className="h-6 w-6 mb-2 mx-auto" />
+              <p className="font-semibold">Paste Job Details</p>
+            </button>
           </div>
 
-          <div className="flex items-center gap-2">
+          {!manualMode ? (
+            <div className="space-y-6">
+              {/* Search */}
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <Input
+                  type="text"
+                  placeholder="Search by job title or company..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="h-14 pl-12 bg-white/5 border-white/10 text-white text-lg"
+                />
+              </div>
+
+              {/* Job Grid */}
+              <div className="max-h-[400px] overflow-y-auto space-y-3 custom-scrollbar">
+                {filteredJobs.length === 0 ? (
+                  <p className="text-center text-gray-400 py-8">
+                    No jobs found
+                  </p>
+                ) : (
+                  filteredJobs.map((job) => (
+                    <button
+                      key={job.id}
+                      onClick={() => setSelectedJobId(job.id.toString())}
+                      className={`w-full text-left p-5 rounded-xl border transition ${
+                        selectedJobId === job.id.toString()
+                          ? "bg-gradient-to-br from-purple-600/20 to-pink-600/20 border-purple-500/50"
+                          : "bg-white/5 border-white/10 hover:bg-white/10"
+                      }`}>
+                      <p className="font-bold text-lg mb-1">{job.title}</p>
+                      <p className="text-gray-400">{job.company}</p>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-5">
+              <Input
+                placeholder="Job Title"
+                value={manualJobTitle}
+                onChange={(e) => setManualJobTitle(e.target.value)}
+                className="h-14 bg-white/5 border-white/10 text-white text-lg"
+              />
+              <Input
+                placeholder="Company Name"
+                value={manualCompany}
+                onChange={(e) => setManualCompany(e.target.value)}
+                className="h-14 bg-white/5 border-white/10 text-white text-lg"
+              />
+              <Textarea
+                placeholder="Paste the full job description here..."
+                value={manualDescription}
+                onChange={(e) => setManualDescription(e.target.value)}
+                className="min-h-[200px] bg-white/5 border-white/10 text-white resize-none"
+              />
+            </div>
+          )}
+
+          <div className="flex gap-4 mt-8">
+            <Button
+              variant="outline"
+              onClick={() => setStep(1)}
+              className="flex-1 h-14 border-white/10 bg-white/5 hover:bg-white/10 text-base">
+              Back
+            </Button>
+            <Button
+              onClick={() => {
+                if (
+                  (!manualMode && selectedJobId) ||
+                  (manualMode &&
+                    manualJobTitle &&
+                    manualCompany &&
+                    manualDescription)
+                ) {
+                  setStep(3);
+                  setError(null);
+                }
+              }}
+              disabled={
+                (!manualMode && !selectedJobId) ||
+                (manualMode &&
+                  (!manualJobTitle || !manualCompany || !manualDescription))
+              }
+              className="flex-1 h-14 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 text-base">
+              Continue
+              <ChevronRight className="ml-2 h-5 w-5" />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Step 3: Review & Analyze */}
+      {step === 3 && (
+        <div className="rounded-3xl border border-white/10 bg-black/20 backdrop-blur-xl p-12">
+          <h2 className="text-3xl font-bold mb-3 text-center">
+            Review & Analyze
+          </h2>
+          <p className="text-gray-400 text-center mb-8">
+            Ready to get AI-powered insights
+          </p>
+
+          {/* Summary */}
+          <div className="space-y-4 mb-8">
+            <div className="p-5 rounded-xl bg-white/5 border border-white/10">
+              <p className="text-sm text-gray-400 mb-1">Resume</p>
+              <p className="font-semibold">{file?.name}</p>
+            </div>
+            <div className="p-5 rounded-xl bg-white/5 border border-white/10">
+              <p className="text-sm text-gray-400 mb-1">Job</p>
+              <p className="font-semibold">
+                {manualMode ? manualJobTitle : selectedJob?.title || "Unknown"}
+              </p>
+              <p className="text-gray-400 text-sm">
+                {manualMode ? manualCompany : selectedJob?.company || "Unknown"}
+              </p>
+            </div>
+          </div>
+
+          {/* Cover Letter Option */}
+          <div className="flex items-center gap-3 p-5 rounded-xl bg-white/5 border border-white/10 mb-8">
             <Checkbox
               id="cover"
               checked={generateCover}
               onCheckedChange={(checked) => setGenerateCover(checked === true)}
             />
-            <Label htmlFor="cover" className="cursor-pointer">
-              Generate tailored cover letter (takes 5-10 seconds longer)
+            <Label htmlFor="cover" className="cursor-pointer flex-1">
+              <FileText className="h-4 w-4 inline mr-2 text-purple-400" />
+              Generate cover letter {!usage?.is_pro && "(Pro only)"}
             </Label>
           </div>
 
           {error && (
-            <div className="flex items-center gap-2 text-red-600 bg-red-50 dark:bg-red-900/20 p-3 rounded">
-              <AlertCircle className="w-5 h-5" />
-              <p className="text-sm">{error}</p>
+            <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 mb-6">
+              <p className="text-red-400">{error}</p>
             </div>
           )}
 
-          <Button
-            onClick={handleAnalyze}
-            disabled={!file || !selectedJobId || analyzing}
-            className="w-full h-12 text-lg">
-            {analyzing ? (
-              <>
-                <span className="animate-pulse">Analyzing with AI...</span>
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-5 h-5 mr-2" />
-                Analyze Resume
-              </>
-            )}
-          </Button>
-        </Card>
-      )}
-
-      {/* Results */}
-      {result && (
-        <div className="space-y-6">
-          {/* Match Score */}
-          <Card className="p-8 text-center">
-            <div className="space-y-4">
-              <h2 className="text-lg font-medium text-gray-600 dark:text-gray-400">
-                Match Score
-              </h2>
-              <div
-                className={`text-7xl font-bold ${getScoreColor(
-                  result.match_score
-                )}`}>
-                {result.match_score.toFixed(0)}%
-              </div>
-              <p className="text-xl font-semibold">
-                {getScoreLabel(result.match_score)}
-              </p>
-              <p className="text-sm text-gray-600">
-                for {result.job_title} @ {result.company}
-              </p>
-              <div className="w-full bg-gray-200 rounded-full h-3 mt-4">
-                <div
-                  className={`h-3 rounded-full ${
-                    result.match_score >= 80
-                      ? "bg-green-600"
-                      : result.match_score >= 60
-                      ? "bg-yellow-600"
-                      : "bg-red-600"
-                  }`}
-                  style={{ width: `${result.match_score}%` }}
-                />
-              </div>
-            </div>
-          </Card>
-
-          {/* Strengths */}
-          {result.strengths && result.strengths.length > 0 && (
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <CheckCircle2 className="w-5 h-5 text-green-600" />
-                Your Strengths
-              </h3>
-              <ul className="space-y-2">
-                {result.strengths.map((strength, idx) => (
-                  <li key={idx} className="flex items-start gap-2">
-                    <span className="text-green-600 mt-1">✓</span>
-                    <span>{strength}</span>
-                  </li>
-                ))}
-              </ul>
-            </Card>
-          )}
-
-          {/* Missing Keywords */}
-          {result.missing_keywords && result.missing_keywords.length > 0 && (
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <AlertCircle className="w-5 h-5 text-yellow-600" />
-                Missing Keywords
-              </h3>
-              <p className="text-sm text-gray-600 mb-3">
-                Consider adding these to your resume:
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {result.missing_keywords.map((keyword, idx) => (
-                  <span
-                    key={idx}
-                    className="px-3 py-1 bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 rounded-full text-sm">
-                    {keyword}
-                  </span>
-                ))}
-              </div>
-            </Card>
-          )}
-
-          {/* Suggestions */}
-          {result.suggestions && (
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold mb-4">AI Suggestions</h3>
-              <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                {result.suggestions}
-              </p>
-            </Card>
-          )}
-
-          {/* Cover Letter */}
-          {result.cover_letter && (
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold mb-4">
-                Generated Cover Letter
-              </h3>
-              <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded border whitespace-pre-wrap text-sm">
-                {result.cover_letter}
-              </div>
-              <Button
-                className="mt-4"
-                onClick={() => {
-                  navigator.clipboard.writeText(result.cover_letter!);
-                  alert("Cover letter copied to clipboard!");
-                }}>
-                Copy to Clipboard
-              </Button>
-            </Card>
-          )}
-
-          {/* Actions */}
-          <div className="flex gap-3">
+          <div className="flex gap-4">
             <Button
               variant="outline"
-              onClick={() => {
-                setResult(null);
-                setFile(null);
-                setSelectedJobId("");
-              }}
-              className="flex-1">
-              Analyze Another Resume
+              onClick={() => setStep(2)}
+              className="flex-1 h-14 border-white/10 bg-white/5 hover:bg-white/10 text-base">
+              Back
             </Button>
             <Button
-              onClick={() => router.push("/dashboard")}
-              className="flex-1">
-              Go to Dashboard
+              onClick={handleAnalyze}
+              disabled={analyzing || (usage && !usage.can_analyze)}
+              className="flex-1 h-14 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 text-base">
+              {analyzing ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2"></div>
+                  Analyzing...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-5 h-5 mr-2" />
+                  Analyze Resume
+                </>
+              )}
             </Button>
           </div>
-
-          <p className="text-xs text-center text-gray-500">
-            Analysis completed in {result.analysis_time_seconds.toFixed(1)}{" "}
-            seconds
-          </p>
         </div>
       )}
     </div>

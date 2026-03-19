@@ -24,6 +24,14 @@ SKILL_VARIANTS = {
     r"\bspark\b": "spark",
     r"\bairflow\b": "airflow",
     r"\bsql\b": "sql",
+    r"\bgdpr\b": "gdpr",
+    r"\bc\+\+\b": "cpp",
+    r"\bc#\b": "csharp",
+    r"\b\.net\b": "dotnet",
+    r"\bsap\b": "sap",
+    r"\bsalesforce\b": "salesforce",
+    r"\btableau\b": "tableau",
+    r"\bpower\s?bi\b": "powerbi",
 }
 
 def extract_skills(*texts: str | None) -> List[str]:
