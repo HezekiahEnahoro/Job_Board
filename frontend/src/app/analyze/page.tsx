@@ -673,7 +673,7 @@ export default function AnalyzePage() {
             </Button>
             <Button
               onClick={handleAnalyze}
-              disabled={analyzing || (usage && !usage.can_analyze)}
+              disabled={analyzing || (usage ? !usage.can_analyze : false)}
               className="flex-1 h-14 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 text-base">
               {analyzing ? (
                 <>
@@ -692,4 +692,4 @@ export default function AnalyzePage() {
       )}
     </div>
   );
-}
+} 
