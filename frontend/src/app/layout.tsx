@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Script from "next/script";
+import PlausibleProvider from "next-plausible";
 import "./globals.css";
 import { Navbar, Footer } from "./components/LayoutParts";
 import { Toaster } from "sonner";
@@ -25,7 +25,6 @@ export const metadata: Metadata = {
   },
 };
 
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -33,14 +32,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <PlausibleProvider domain="myjobphase.com" />
+      </head>
       <body className="min-h-screen bg-black text-white antialiased">
-        {/* Plausible Analytics */}
-        <Script
-          defer
-          data-domain="myjobphase.com"
-          src="https://plausible.io/js/pa-0JS9YBRCNbbgAm5cI2sOK.js"
-          // strategy="afterInteractive"
-        />
         {/* Background mesh gradient */}
         <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-gray-900 via-black to-black"></div>
 
