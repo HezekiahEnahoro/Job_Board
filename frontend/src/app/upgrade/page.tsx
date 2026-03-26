@@ -84,7 +84,7 @@ export default function UpgradePage() {
     <div className="max-w-6xl mx-auto space-y-12">
       {/* Header */}
       <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Upgrade to JobFlow Pro</h1>
+        <h1 className="text-4xl font-bold mb-4">Upgrade to MyJobPhase Pro</h1>
         <p className="text-xl text-gray-600 dark:text-gray-400">
           Unlimited applications, unlimited AI analyses, and priority support
         </p>

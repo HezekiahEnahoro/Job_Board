@@ -76,7 +76,9 @@ async def lifespan(app: FastAPI):
     if scheduler:
         scheduler.shutdown(wait=False)
 
-app = FastAPI(title="JobBoard API", version="0.5.1", lifespan=lifespan)
+app = FastAPI(title="MyJobPhase API",
+    description="AI-powered job search platform API",
+    version="1.0.0", lifespan=lifespan)
 
 # CORS Configuration
 ALLOW_ORIGINS = os.getenv("ALLOW_ORIGINS", "http://localhost:3000").split(",")
@@ -99,7 +101,7 @@ app.include_router(stripe_router)
 
 @app.get("/")
 def root():
-    return {"message": "JobFlow API is running"}
+    return {"message": "MyJobPhase API is running"}
 
 @app.get("/health")
 def health():

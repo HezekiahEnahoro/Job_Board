@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import {
   Target,
   Sparkles,
@@ -11,10 +10,12 @@ import {
   TrendingUp,
   Zap,
   Brain,
-  Clock,
-  Star,
+  Crown,
+  Shield,
   Users,
   ChevronRight,
+  Briefcase,
+  BarChart3,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -23,16 +24,17 @@ export default function LandingPage() {
 
   return (
     <div className="relative min-h-screen bg-black text-white overflow-hidden">
-      {/* Mesh Gradient Background */}
-      <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(17,24,39,1),rgba(0,0,0,1))]">
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiMyMTIxMjEiIGZpbGwtb3BhY2l0eT0iMC40Ij48cGF0aCBkPSJNMzYgMzRjMC0yLjIxIDEuNzktNCAzLjk5LTRTNDQgMzEuNzkgNDQgMzRzLTEuNzkgNC0zLjk5IDRTMzYgMzYuMjEgMzYgMzR6bTAtMjBjMC0yLjIxIDEuNzktNCAzLjk5LTRTNDQgMTEuNzkgNDQgMTRzLTEuNzkgNC0zLjk5IDRTMzYgMTYuMjEgMzYgMTR6TTIwIDM0YzAtMi4yMSAxLjc5LTQgMy45OS00UzI4IDMxLjc5IDI4IDM0cy0xLjc5IDQtMy45OSA0UzIwIDM2LjIxIDIwIDM0em0wLTIwYzAtMi4yMSAxLjc5LTQgMy45OS00UzI4IDExLjc5IDI4IDE0cy0xLjc5IDQtMy45OSA0UzIwIDE2LjIxIDIwIDE0eiIvPjwvZz48L2c+PC9zdmc+')] opacity-20"></div>
+      {/* Enhanced Mesh Gradient Background */}
+      <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,rgba(59,130,246,0.15),transparent_50%),radial-gradient(ellipse_at_bottom,rgba(168,85,247,0.15),transparent_50%)]">
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiMyMTIxMjEiIGZpbGwtb3BhY2l0eT0iMC40Ij48cGF0aCBkPSJNMzYgMzRjMC0yLjIxIDEuNzktNCAzLjk5LTRTNDQgMzEuNzkgNDQgMzRzLTEuNzkgNC0zLjk5IDRTMzYgMzYuMjEgMzYgMzR6bTAtMjBjMC0yLjIxIDEuNzktNCAzLjk5LTRTNDQgMTEuNzkgNDQgMTRzLTEuNzkgNC0zLjk5IDRTMzYgMTYuMjEgMzYgMTR6TTIwIDM0YzAtMi4yMSAxLjc5LTQgMy45OS00UzI4IDMxLjc5IDI4IDM0cy0xLjc5IDQtMy45OSA0UzIwIDM2LjIxIDIwIDM0em0wLTIwYzAtMi4yMSAxLjc5LTQgMy45OS00UzI4IDExLjc5IDI4IDE0cy0xLjc5IDQtMy45OSA0UzIwIDE2LjIxIDIwIDE0eiIvPjwvZz48L2c+PC9zdmc+')] opacity-30"></div>
       </div>
 
-      {/* Animated Gradient Orbs */}
+      {/* Larger, More Visible Animated Gradient Orbs */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/20 rounded-full mix-blend-screen filter blur-[128px] animate-float"></div>
-        <div className="absolute top-1/3 right-1/4 w-96 h-96 bg-purple-500/20 rounded-full mix-blend-screen filter blur-[128px] animate-float-delayed"></div>
-        <div className="absolute bottom-1/4 left-1/2 w-96 h-96 bg-cyan-500/20 rounded-full mix-blend-screen filter blur-[128px] animate-float-slow"></div>
+        <div className="absolute -top-48 -left-48 w-[600px] h-[600px] bg-blue-500/30 rounded-full mix-blend-screen filter blur-[120px] animate-float"></div>
+        <div className="absolute -top-32 -right-32 w-[500px] h-[500px] bg-purple-500/30 rounded-full mix-blend-screen filter blur-[100px] animate-float-delayed"></div>
+        <div className="absolute -bottom-48 left-1/2 -translate-x-1/2 w-[700px] h-[700px] bg-cyan-500/25 rounded-full mix-blend-screen filter blur-[140px] animate-float-slow"></div>
+        <div className="absolute top-1/2 right-1/4 w-[400px] h-[400px] bg-pink-500/20 rounded-full mix-blend-screen filter blur-[90px] animate-float"></div>
       </div>
 
       {/* Content */}
@@ -42,14 +44,11 @@ export default function LandingPage() {
           <div className="mx-auto max-w-7xl w-full">
             <div className="text-center space-y-12">
               {/* Badge */}
-              <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-white/10 backdrop-blur-xl hover:border-white/20 transition-all group cursor-pointer">
+              <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-white/5 border border-white/10 backdrop-blur-xl hover:border-white/20 transition-all group cursor-pointer">
                 <div className="flex items-center gap-2">
-                  <div className="relative">
-                    <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
-                    <div className="absolute inset-0 blur-sm bg-yellow-400/50"></div>
-                  </div>
+                  <Shield className="h-4 w-4 text-green-400" />
                   <span className="text-sm font-medium">
-                    Trusted by 10,000+ job seekers
+                    Trusted by 10,000+ professionals
                   </span>
                 </div>
                 <ChevronRight className="h-4 w-4 text-white/50 group-hover:translate-x-1 transition-transform" />
@@ -58,28 +57,19 @@ export default function LandingPage() {
               {/* Main Headline */}
               <div className="space-y-6">
                 <h1 className="text-6xl sm:text-7xl lg:text-8xl font-black tracking-tight">
-                  <span className="block mb-4">Land Your</span>
+                  <span className="block mb-4">Track Every Phase</span>
                   <span className="block bg-gradient-to-r from-blue-400 via-cyan-400 to-purple-400 bg-clip-text text-transparent animate-gradient-x">
-                    Dream Job
-                  </span>
-                  <span className="block mt-4 text-5xl sm:text-6xl lg:text-7xl">
-                    3× Faster
+                    Of Your Job Search
                   </span>
                 </h1>
 
                 <p className="max-w-3xl mx-auto text-xl sm:text-2xl text-gray-400 leading-relaxed font-light">
-                  The intelligent platform that transforms your job search with{" "}
+                  Navigate your job search with confidence. Track applications,{" "}
                   <span className="text-white font-medium">
-                    AI-powered insights
+                    analyze resumes with AI
                   </span>
-                  ,{" "}
-                  <span className="text-white font-medium">
-                    automated workflows
-                  </span>
-                  , and{" "}
-                  <span className="text-white font-medium">
-                    data-driven strategy
-                  </span>
+                  , and get actionable insights through every phase—from
+                  discovery to offer.
                 </p>
               </div>
 
@@ -90,7 +80,7 @@ export default function LandingPage() {
                     size="lg"
                     className="group relative h-16 px-12 text-lg font-bold overflow-hidden bg-white text-black hover:bg-white/90 shadow-2xl shadow-blue-500/25 hover:shadow-blue-500/50 transition-all duration-300">
                     <span className="relative z-10 flex items-center gap-3">
-                      Start Free Trial
+                      Start Free Today
                       <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
                     </span>
                   </Button>
@@ -101,7 +91,7 @@ export default function LandingPage() {
                     size="lg"
                     variant="outline"
                     className="h-16 px-12 text-lg font-semibold border-2 border-white/20 bg-white/5 hover:bg-white/10 hover:border-white/30 backdrop-blur-xl transition-all duration-300">
-                    Explore 2,700+ Jobs
+                    Browse 400+ Remote Jobs
                   </Button>
                 </Link>
               </div>
@@ -110,15 +100,15 @@ export default function LandingPage() {
               <div className="flex flex-wrap justify-center gap-8 pt-12 text-sm text-gray-500">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 text-green-400" />
-                  <span>Free forever plan</span>
+                  <span>No credit card required</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Zap className="h-4 w-4 text-yellow-400" />
-                  <span>Setup in 30 seconds</span>
+                  <span>2-minute setup</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-blue-400" />
-                  <span>10,000+ active users</span>
+                  <Shield className="h-4 w-4 text-blue-400" />
+                  <span>Bank-level security</span>
                 </div>
               </div>
             </div>
@@ -128,11 +118,158 @@ export default function LandingPage() {
               <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-cyan-500/20 rounded-3xl blur-3xl"></div>
               <div className="relative group">
                 <div className="absolute -inset-1 bg-gradient-to-r from-blue-500 via-purple-500 to-cyan-500 rounded-3xl opacity-50 group-hover:opacity-75 blur-2xl transition-all duration-500"></div>
-                <div className="relative aspect-video rounded-2xl border border-white/10 bg-gradient-to-br from-gray-900 to-black overflow-hidden shadow-2xl">
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-center space-y-4">
-                      <Sparkles className="h-16 w-16 mx-auto text-blue-400 opacity-50" />
-                      <p className="text-gray-600 text-sm">Dashboard Preview</p>
+                <div className="relative rounded-2xl border border-white/10 bg-gradient-to-br from-gray-900 to-black overflow-hidden shadow-2xl">
+                  {/* Real Dashboard UI */}
+                  <div className="aspect-video relative bg-black">
+                    <div className="absolute inset-0 p-4 sm:p-6 lg:p-8">
+                      {/* Header */}
+                      <div className="flex items-center justify-between mb-6">
+                        <div>
+                          <h1 className="text-lg sm:text-2xl font-black tracking-tight">
+                            Application Tracker
+                          </h1>
+                          <p className="text-xs sm:text-sm text-gray-400 mt-1">
+                            Welcome back, Alex
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="group relative">
+                            <div className="absolute -inset-0.5 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full blur opacity-75"></div>
+                            <div className="relative inline-flex items-center gap-1.5 px-3 py-1.5 bg-black rounded-full border border-yellow-500/50">
+                              <Crown className="h-3 w-3 sm:h-4 sm:w-4 text-yellow-400" />
+                              <span className="text-xs font-bold text-yellow-400">
+                                PRO
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Stats Grid */}
+                      <div className="grid grid-cols-5 gap-2 sm:gap-3 mb-6">
+                        {[
+                          {
+                            label: "Total",
+                            value: "24",
+                            gradient: "from-white/10 to-white/5",
+                          },
+                          {
+                            label: "Saved",
+                            value: "6",
+                            gradient: "from-slate-500 to-slate-600",
+                          },
+                          {
+                            label: "Applied",
+                            value: "12",
+                            gradient: "from-blue-500 to-blue-600",
+                          },
+                          {
+                            label: "Interview",
+                            value: "4",
+                            gradient: "from-purple-500 to-purple-600",
+                          },
+                          {
+                            label: "Offer",
+                            value: "2",
+                            gradient: "from-green-500 to-green-600",
+                          },
+                        ].map((stat, i) => (
+                          <div key={i} className="group relative">
+                            <div
+                              className={`absolute -inset-px bg-gradient-to-br ${stat.gradient} rounded-lg opacity-0 group-hover:opacity-100 blur transition`}></div>
+                            <div className="relative h-full rounded-lg border border-white/10 bg-white/5 backdrop-blur-xl p-2 sm:p-3 group-hover:border-white/20 transition">
+                              <div className="text-lg sm:text-2xl font-black text-white">
+                                {stat.value}
+                              </div>
+                              <div className="text-[8px] sm:text-xs text-gray-400">
+                                {stat.label}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Application Cards */}
+                      <div className="space-y-2 sm:space-y-3">
+                        {[
+                          {
+                            title: "Senior Frontend Engineer",
+                            company: "Stripe",
+                            location: "Remote - US",
+                            status: "Interview",
+                            statusColor: "from-purple-500 to-purple-600",
+                            statusBg: "bg-purple-500/10",
+                            statusText: "text-purple-400",
+                          },
+                          {
+                            title: "Product Designer",
+                            company: "Vercel",
+                            location: "Remote - Global",
+                            status: "Applied",
+                            statusColor: "from-blue-500 to-blue-600",
+                            statusBg: "bg-blue-500/10",
+                            statusText: "text-blue-400",
+                          },
+                          {
+                            title: "Full Stack Developer",
+                            company: "Linear",
+                            location: "Remote - Europe",
+                            status: "Saved",
+                            statusColor: "from-slate-500 to-slate-600",
+                            statusBg: "bg-slate-500/10",
+                            statusText: "text-slate-400",
+                          },
+                        ].map((app, i) => (
+                          <div key={i} className="group relative">
+                            <div
+                              className={`absolute -inset-px bg-gradient-to-r ${app.statusColor} rounded-xl opacity-0 group-hover:opacity-100 blur transition`}></div>
+                            <div className="relative rounded-xl border border-white/10 bg-white/5 backdrop-blur-xl p-3 sm:p-4 group-hover:border-white/20 transition">
+                              <div className="flex items-start justify-between gap-3">
+                                {/* Left: Job Info */}
+                                <div className="flex-1 space-y-1.5 min-w-0">
+                                  <h3 className="text-xs sm:text-sm font-bold text-white truncate">
+                                    {app.title}
+                                  </h3>
+                                  <div className="flex flex-wrap items-center gap-1.5 text-[10px] sm:text-xs text-gray-400">
+                                    <span className="font-medium">
+                                      {app.company}
+                                    </span>
+                                    <span className="hidden sm:inline">•</span>
+                                    <span className="hidden sm:inline">
+                                      {app.location}
+                                    </span>
+                                  </div>
+                                  <div className="inline-flex">
+                                    <div
+                                      className={`px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[8px] sm:text-xs font-bold ${app.statusBg} ${app.statusText} border border-white/10`}>
+                                      {app.status}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Right: Actions */}
+                                <div className="flex flex-col gap-1.5">
+                                  <div className="w-16 sm:w-24 h-6 sm:h-8 border border-white/10 bg-white/5 rounded text-[8px] sm:text-xs flex items-center justify-center text-gray-400">
+                                    Status
+                                  </div>
+                                  <div className="w-16 sm:w-24 h-6 sm:h-8 border border-red-500/20 bg-red-500/10 rounded text-[8px] sm:text-xs flex items-center justify-center text-red-400">
+                                    Remove
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Overlay Label */}
+                    <div className="absolute bottom-4 right-4 sm:bottom-6 sm:right-6">
+                      <div className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-full bg-black/50 backdrop-blur-xl border border-white/10">
+                        <span className="text-[10px] sm:text-xs text-gray-400 font-medium">
+                          Live Dashboard Preview
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -147,18 +284,18 @@ export default function LandingPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-12 text-center">
               <div className="space-y-2">
                 <div className="text-5xl font-black bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-                  3×
+                  10K+
                 </div>
                 <div className="text-sm text-gray-400 font-medium">
-                  Faster Job Search
+                  Active Users
                 </div>
               </div>
               <div className="space-y-2">
                 <div className="text-5xl font-black bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                  85%
+                  400+
                 </div>
                 <div className="text-sm text-gray-400 font-medium">
-                  Average Match Score
+                  Remote Jobs Updated Daily
                 </div>
               </div>
               <div className="space-y-2">
@@ -166,7 +303,7 @@ export default function LandingPage() {
                   $15
                 </div>
                 <div className="text-sm text-gray-400 font-medium">
-                  vs $49 Competitors
+                  vs $49+ Competitors
                 </div>
               </div>
             </div>
@@ -196,7 +333,6 @@ export default function LandingPage() {
                   description:
                     "Kanban-style pipeline with drag-and-drop. Track every application from discovery to offer.",
                   gradient: "from-blue-500 to-cyan-500",
-                  delay: "0",
                 },
                 {
                   icon: Brain,
@@ -204,31 +340,27 @@ export default function LandingPage() {
                   description:
                     "Instant ATS scores, keyword gaps, and AI-generated cover letters tailored to each job.",
                   gradient: "from-purple-500 to-pink-500",
-                  delay: "100",
                 },
                 {
-                  icon: Clock,
-                  title: "Smart Reminders",
-                  description:
-                    "Never miss a follow-up. Automated emails sent at the perfect time to maximize response.",
-                  gradient: "from-green-500 to-emerald-500",
-                  delay: "200",
-                },
-                {
-                  icon: TrendingUp,
-                  title: "Analytics Engine",
+                  icon: BarChart3,
+                  title: "Analytics Dashboard",
                   description:
                     "Real-time insights on response rates, interview conversions, and strategy optimization.",
+                  gradient: "from-green-500 to-emerald-500",
+                },
+                {
+                  icon: Briefcase,
+                  title: "Remote Job Board",
+                  description:
+                    "Curated remote opportunities updated daily from top companies worldwide.",
                   gradient: "from-orange-500 to-red-500",
-                  delay: "300",
                 },
               ].map((feature, i) => (
                 <div
                   key={i}
                   className="group relative"
                   onMouseEnter={() => setHoveredFeature(i)}
-                  onMouseLeave={() => setHoveredFeature(null)}
-                  style={{ animationDelay: `${feature.delay}ms` }}>
+                  onMouseLeave={() => setHoveredFeature(null)}>
                   <div
                     className={`absolute -inset-px rounded-2xl bg-gradient-to-r ${feature.gradient} opacity-0 group-hover:opacity-100 blur transition-all duration-500`}></div>
                   <div className="relative h-full rounded-2xl border border-white/10 bg-gradient-to-br from-gray-900/50 to-black/50 backdrop-blur-xl p-8 group-hover:border-white/20 transition-all duration-300">
@@ -289,10 +421,10 @@ export default function LandingPage() {
 
                     <ul className="space-y-4">
                       {[
-                        "Track up to 10 applications",
-                        "1 AI analysis per month",
-                        "Email reminders",
+                        "Track unlimited applications",
+                        "3 AI analyses per month",
                         "Basic analytics",
+                        "Job search board",
                       ].map((item, i) => (
                         <li key={i} className="flex items-center gap-3">
                           <CheckCircle2 className="h-5 w-5 text-green-400 shrink-0" />
@@ -336,12 +468,12 @@ export default function LandingPage() {
 
                     <ul className="space-y-4">
                       {[
-                        { text: "Unlimited applications", featured: true },
                         { text: "Unlimited AI analyses", featured: true },
-                        { text: "AI cover letters", featured: false },
-                        { text: "Priority support", featured: false },
+                        { text: "AI cover letter generation", featured: true },
                         { text: "Advanced analytics", featured: false },
+                        { text: "Priority support", featured: false },
                         { text: "Export to CSV", featured: false },
+                        { text: "Email reminders", featured: false },
                       ].map((item, i) => (
                         <li key={i} className="flex items-center gap-3">
                           <CheckCircle2 className="h-5 w-5 text-blue-400 shrink-0" />
@@ -359,7 +491,7 @@ export default function LandingPage() {
 
                     <Link href="/auth">
                       <Button className="w-full h-14 text-base font-bold bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 shadow-xl shadow-blue-500/50 hover:shadow-blue-500/70 transition-all">
-                        Start Pro Trial
+                        Start Pro Today
                       </Button>
                     </Link>
                   </div>
@@ -368,7 +500,7 @@ export default function LandingPage() {
             </div>
 
             <p className="mt-12 text-center text-gray-500">
-              💎 70% cheaper than competitors — JobScan charges $49/mo
+              💎 70% cheaper than competitors — Jobscan charges $49/mo
             </p>
           </div>
         </section>
@@ -381,15 +513,15 @@ export default function LandingPage() {
               <div className="relative rounded-3xl border border-white/10 bg-gradient-to-br from-gray-900/90 to-black/90 backdrop-blur-2xl p-16 text-center">
                 <div className="space-y-8">
                   <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black">
-                    <span className="block mb-2">Ready to Transform</span>
+                    <span className="block mb-2">Ready to Master</span>
                     <span className="block bg-gradient-to-r from-blue-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent">
-                      Your Career Journey?
+                      Every Phase of Your Search?
                     </span>
                   </h2>
 
                   <p className="text-xl text-gray-400 max-w-2xl mx-auto">
-                    Join 10,000+ professionals who landed their dream jobs using
-                    JobFlow
+                    Join 10,000+ professionals tracking their job search with
+                    MyJobPhase
                   </p>
 
                   <Link href="/auth">

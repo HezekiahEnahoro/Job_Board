@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getToken } from "@/lib/auth";
-import { Card } from "@/components/ui/card";
+// import { Card } from "@/components/ui/card";
 import {
   BarChart,
   Bar,
@@ -132,14 +132,22 @@ export default function AnalyticsPage() {
     ).length,
   }));
 
-  // Calculate metrics
+  // Calculate metrics - FIXED RESPONSE RATE CALCULATION
   const totalApps = stats?.total || 0;
+  const savedCount = stats?.by_status?.saved || 0;
   const appliedCount = stats?.by_status?.applied || 0;
   const interviewCount = stats?.by_status?.interview || 0;
   const offerCount = stats?.by_status?.offer || 0;
+  const rejectedCount = stats?.by_status?.rejected || 0;
+
+  // Response rate = Applications that got a response / Applications submitted
+  // Don't count "saved" (not submitted yet)
+  const applicationsSubmitted = totalApps - savedCount;
+  const responsesReceived = interviewCount + offerCount + rejectedCount;
+
   const responseRate =
-    appliedCount > 0
-      ? Math.round(((interviewCount + offerCount) / appliedCount) * 100) || 0
+    applicationsSubmitted > 0
+      ? Math.round((responsesReceived / applicationsSubmitted) * 100) || 0
       : 0;
 
   return (

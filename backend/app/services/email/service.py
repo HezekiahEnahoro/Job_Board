@@ -13,11 +13,11 @@ def send_welcome_email(to_email: str, user_name: Optional[str] = None):
     html = f"""
     <html>
     <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h1 style="color: #2563eb;">Welcome to JobFlow! 🎉</h1>
+        <h1 style="color: #2563eb;">Welcome to MyJobPhase! 🎉</h1>
         
         <p>Hi {name},</p>
         
-        <p>Thanks for signing up! JobFlow helps you track job applications and land interviews faster.</p>
+        <p>Thanks for signing up! MyJobPhase helps you track job applications and land interviews faster.</p>
         
         <h2 style="color: #1f2937;">What's next?</h2>
         <ul>
@@ -45,7 +45,7 @@ def send_welcome_email(to_email: str, user_name: Optional[str] = None):
         params = {
             "from": FROM_EMAIL,
             "to": [to_email],
-            "subject": "Welcome to JobFlow! 🚀",
+            "subject": "Welcome to MyJobPhase! 🚀",
             "html": html,
         }
         

@@ -1,28 +1,29 @@
 import type { Metadata } from "next";
-import "./globals.css"; 
+import "./globals.css";
 import { Navbar, Footer } from "./components/LayoutParts";
 import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
-  title: "JobFlow - Land Your Dream Job 3x Faster with AI",
+  title: "MyJobPhase - Track Every Phase of Your Job Search",
   description:
-    "Track applications, optimize resumes with AI, and never miss a follow-up. Get hired 3x faster with JobFlow's smart job search tools. Free to start!",
-  keywords: [
-    "job search",
-    "resume optimizer",
-    "AI resume",
-    "application tracker",
-    "job tracker",
-    "career tools",
-  ],
-  authors: [{ name: "JobFlow" }],
+    "AI-powered job search platform. Track applications, analyze resumes with AI, and land remote jobs with intelligent insights through every phase.",
+  keywords:
+    "job search, application tracker, resume analyzer, remote jobs, career, AI, ATS, job hunting, cover letter generator",
   openGraph: {
-    title: "JobFlow - AI-Powered Job Search Platform",
+    title: "MyJobPhase - Track Every Phase of Your Job Search",
     description:
-      "Track applications, optimize resumes with AI, get hired faster",
-    type: "website",
+      "AI-powered job search platform with application tracking and resume analysis",
+    url: "https://myjobphase.com",
+    siteName: "MyJobPhase",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "MyJobPhase - Track Every Phase of Your Job Search",
+    description:
+      "AI-powered job search platform with application tracking and resume analysis",
   },
 };
+
 
 export default function RootLayout({
   children,

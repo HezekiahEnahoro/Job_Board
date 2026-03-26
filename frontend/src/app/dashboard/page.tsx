@@ -3,7 +3,8 @@
 import { useEffect, useState, Suspense } from "react";
 import { getToken, getCurrentUser, type User } from "@/lib/auth";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Button } from "@/components/ui/button"; 
+import { Button } from "@/components/ui/button";
+
 import {
   Select,
   SelectContent,
@@ -13,9 +14,9 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import Link from "next/link";
-import { 
-  Sparkles, 
-  Target, 
+import {
+  Sparkles,
+  Target,
   Crown,
   TrendingUp,
   Calendar,
@@ -101,7 +102,7 @@ function DashboardContent() {
   const [editingNotes, setEditingNotes] = useState<number | null>(null);
   const [noteText, setNoteText] = useState("");
   const router = useRouter();
-  const searchParams = useSearchParams(); 
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     const token = getToken();
@@ -115,7 +116,7 @@ function DashboardContent() {
 
     if (upgraded === "true") {
       // Show success message
-      toast.success("🎉 Welcome to JobFlow Pro!");
+      toast.success("🎉 Welcome to MyJobPhase Pro!");
 
       // Wait 1 second then force refresh user data
       setTimeout(async () => {
@@ -564,18 +565,19 @@ function DashboardContent() {
 // WRAP IN SUSPENSE
 export default function DashboardPage() {
   return (
-    <Suspense fallback={
-      <div className="container mx-auto max-w-7xl px-6 lg:px-8 py-8">
-        <div className="animate-pulse space-y-6">
-          <div className="h-12 bg-white/5 rounded-lg w-64"></div>
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="h-24 bg-white/5 rounded-xl"></div>
-            ))}
+    <Suspense
+      fallback={
+        <div className="container mx-auto max-w-7xl px-6 lg:px-8 py-8">
+          <div className="animate-pulse space-y-6">
+            <div className="h-12 bg-white/5 rounded-lg w-64"></div>
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="h-24 bg-white/5 rounded-xl"></div>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
-    }>
+      }>
       <DashboardContent />
     </Suspense>
   );

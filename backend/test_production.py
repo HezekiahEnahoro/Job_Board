@@ -54,7 +54,7 @@ def test_stats(token):
     print(f"✅ Stats: {stats}")
 
 if __name__ == "__main__":
-    print("🧪 Testing JobFlow Production...\n")
+    print("🧪 Testing MyJobPhase Production...\n")
     
     # Test public endpoints
     test_health()

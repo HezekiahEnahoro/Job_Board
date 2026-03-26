@@ -45,7 +45,9 @@ export function Navbar() {
                 <Zap className="h-5 w-5 text-white" />
               </div>
             </div>
-            <span className="text-xl font-black tracking-tight">JobFlow</span>
+            <span className="text-xl font-black tracking-tight">
+              MyJobPhase
+            </span>
           </Link>
 
           {/* Desktop Navigation */}
@@ -294,13 +296,13 @@ export function Footer() {
 
         <div className="pt-8 border-t border-white/5 flex flex-col sm:flex-row justify-between items-center gap-4">
           <p className="text-sm text-gray-500">
-            © 2026 JobFlow. Built with precision for ambitious professionals.
+            © 2026 MyJobPhase. Built with precision for ambitious professionals.
           </p>
           <div className="flex items-center gap-2">
             <div className="p-2 rounded-lg bg-gradient-to-br from-blue-600 to-purple-600">
               <Zap className="h-4 w-4 text-white" />
             </div>
-            <span className="text-sm font-bold text-white">JobFlow</span>
+            <span className="text-sm font-bold text-white">MyJobPhase</span>
           </div>
         </div>
       </div>

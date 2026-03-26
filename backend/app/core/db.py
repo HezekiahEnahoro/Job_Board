@@ -1,4 +1,5 @@
 import os
+from typing import Generator
 from sqlalchemy import create_engine, text, Connection
 from sqlalchemy.orm import sessionmaker, declarative_base, Session
 
@@ -31,19 +32,30 @@ engine = create_engine(
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 Base = declarative_base()
 
-def get_db() -> Session:
+
+def get_db() -> Generator[Session, None, None]:
+    """
+    FastAPI dependency that provides a database session.
+    
+    Yields:
+        Session: SQLAlchemy database session
+    """
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
 
+
 def init_db() -> None:
+    """Initialize database tables"""
     from . import models
     from app.services.auth import models as auth_models
     Base.metadata.create_all(bind=engine)
 
-def ensure_indexes(conn: Connection):
+
+def ensure_indexes(conn: Connection) -> None:
+    """Create indexes for better query performance"""
     conn.execute(text("CREATE INDEX IF NOT EXISTS idx_jobs_company ON jobs (company)"))
     conn.execute(text("CREATE INDEX IF NOT EXISTS idx_jobs_posted_at ON jobs (posted_at)"))
     conn.execute(text("CREATE INDEX IF NOT EXISTS idx_jobs_scraped_at ON jobs (scraped_at)"))

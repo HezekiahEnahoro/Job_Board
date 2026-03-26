@@ -164,7 +164,7 @@ export default function AuthPage() {
                   <div className="relative flex justify-center text-sm">
                     <span className="px-4 bg-gradient-to-br from-gray-900/90 to-black/90 text-gray-400">
                       {mode === "login"
-                        ? "New to JobFlow?"
+                        ? "New to MyJobPhase?"
                         : "Already have an account?"}
                     </span>
                   </div>
