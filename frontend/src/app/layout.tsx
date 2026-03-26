@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import "./globals.css";
 import { Navbar, Footer } from "./components/LayoutParts";
 import { Toaster } from "sonner";
@@ -32,6 +33,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <Script
+          defer
+          data-domain="myjobphase.com"
+          src="https://plausible.io/js/pa-0JS9YBRCNbbgAm5cI2sOK.js"
+          strategy="afterInteractive"
+        />
+      </head>
       <body className="min-h-screen bg-black text-white antialiased">
         {/* Background mesh gradient */}
         <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-gray-900 via-black to-black"></div>
