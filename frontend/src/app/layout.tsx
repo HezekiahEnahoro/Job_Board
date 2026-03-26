@@ -39,7 +39,7 @@ export default function RootLayout({
           defer
           data-domain="myjobphase.com"
           src="https://plausible.io/js/pa-0JS9YBRCNbbgAm5cI2sOK.js"
-          strategy="afterInteractive"
+          // strategy="afterInteractive"
         />
         {/* Background mesh gradient */}
         <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-gray-900 via-black to-black"></div>
