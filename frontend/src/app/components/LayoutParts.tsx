@@ -220,7 +220,7 @@ export function Navbar() {
                   Sign In
                 </Link>
                 <Link
-                  href="/auth"
+                  href="/auth?mode=signup"
                   className="block"
                   onClick={() => setMobileMenuOpen(false)}>
                   <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600">
