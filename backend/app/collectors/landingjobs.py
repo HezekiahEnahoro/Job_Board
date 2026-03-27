@@ -26,13 +26,30 @@ async def fetch_landingjobs() -> List[Dict]:
         r.raise_for_status()
         data = r.json()
 
-    jobs = data.get("jobs", [])
+    # FIX: Check if data is dict or list
+    if isinstance(data, dict):
+        jobs = data.get("jobs", [])
+    elif isinstance(data, list):
+        jobs = data
+    else:
+        jobs = []
     
     out: List[Dict] = []
     for j in jobs:
+        # FIX: Handle both dict and non-dict responses
+        if not isinstance(j, dict):
+            continue
+            
         title = clean_job_title(j.get("title", ""))
-        company = j.get("company_name", "")
-        location = j.get("location", {}).get("name", "Europe")
+        company = j.get("company_name", "") or j.get("company", {}).get("name", "")
+        
+        # FIX: Handle nested location object
+        location_data = j.get("location", {})
+        if isinstance(location_data, dict):
+            location = location_data.get("name", "Europe")
+        else:
+            location = str(location_data) if location_data else "Europe"
+        
         desc = j.get("description", "")
         
         if not title:
@@ -45,8 +62,8 @@ async def fetch_landingjobs() -> List[Dict]:
             "remote_flag": True,
             "skills": extract_skills(title, desc),
             "description_text": desc[:10000],
-            "apply_url": j.get("url", ""),
-            "canonical_url": j.get("url", ""),
+            "apply_url": j.get("url", "") or j.get("apply_url", ""),
+            "canonical_url": j.get("url", "") or j.get("apply_url", ""),
             "posted_at": j.get("created_at"),
             "salary_min": None,
             "salary_max": None,

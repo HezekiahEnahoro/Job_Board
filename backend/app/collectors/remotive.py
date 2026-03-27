@@ -1,7 +1,7 @@
 import httpx
 import re
 from typing import List, Dict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from app.core.skills import extract_skills
 
 API = "https://remotive.com/api/remote-jobs"
@@ -34,16 +34,27 @@ async def fetch_remotive_jobs(hours: int = 48) -> List[Dict]:
         data = r.json()
 
     jobs = data.get("jobs", [])
-    cutoff = datetime.utcnow() - timedelta(hours=hours)
+    
+    # FIX: Use timezone-aware datetime
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
     
     out: List[Dict] = []
     for j in jobs:
         # Parse publication date
         pub_date_str = j.get("publication_date", "")
         try:
-            pub_date = datetime.fromisoformat(pub_date_str.replace("Z", "+00:00"))
+            # Handle both formats
+            if pub_date_str.endswith("Z"):
+                pub_date = datetime.fromisoformat(pub_date_str.replace("Z", "+00:00"))
+            else:
+                pub_date = datetime.fromisoformat(pub_date_str)
         except:
-            pub_date = datetime.utcnow()
+            # If parsing fails, include the job anyway
+            pub_date = datetime.now(timezone.utc)
+        
+        # Make pub_date timezone-aware if it isn't
+        if pub_date.tzinfo is None:
+            pub_date = pub_date.replace(tzinfo=timezone.utc)
         
         # Skip old jobs
         if pub_date < cutoff:
@@ -69,7 +80,7 @@ async def fetch_remotive_jobs(hours: int = 48) -> List[Dict]:
             "description_text": desc[:10000],
             "apply_url": j.get("url", ""),
             "canonical_url": j.get("url", ""),
-            "posted_at": pub_date.isoformat(),
+            "posted_at": pub_date,  # Use datetime object, not string
             "salary_min": None,
             "salary_max": None,
             "currency": None,
