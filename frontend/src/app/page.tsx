@@ -75,7 +75,7 @@ export default function LandingPage() {
 
               {/* CTA Section */}
               <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-8">
-                <Link href="/auth">
+                <Link href="/auth?mode=signup">
                   <Button
                     size="lg"
                     className="group relative h-16 px-12 text-lg font-bold overflow-hidden bg-white text-black hover:bg-white/90 shadow-2xl shadow-blue-500/25 hover:shadow-blue-500/50 transition-all duration-300">
@@ -433,7 +433,7 @@ export default function LandingPage() {
                       ))}
                     </ul>
 
-                    <Link href="/auth">
+                    <Link href="/auth?mode=signup">
                       <Button
                         variant="outline"
                         className="w-full h-14 text-base font-semibold border-2 border-white/20 hover:bg-white/10 hover:border-white/30 transition-all">
@@ -489,7 +489,7 @@ export default function LandingPage() {
                       ))}
                     </ul>
 
-                    <Link href="/auth">
+                    <Link href="/auth?mode=signup">
                       <Button className="w-full h-14 text-base font-bold bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 shadow-xl shadow-blue-500/50 hover:shadow-blue-500/70 transition-all">
                         Start Pro Today
                       </Button>
@@ -524,7 +524,7 @@ export default function LandingPage() {
                     MyJobPhase
                   </p>
 
-                  <Link href="/auth">
+                  <Link href="/auth?mode=signup">
                     <Button
                       size="lg"
                       className="h-16 px-12 text-lg font-bold bg-white text-black hover:bg-white/90 shadow-2xl hover:scale-105 transition-all duration-300">

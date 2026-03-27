@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,13 +19,29 @@ import {
 import Link from "next/link";
 
 export default function AuthPage() {
-  const [mode, setMode] = useState<"login" | "signup">("login");
+  const searchParams = useSearchParams();
+
+  // FIX: Check URL parameter for mode
+  const initialMode =
+    searchParams.get("mode") === "signup" ? "signup" : "login";
+
+  const [mode, setMode] = useState<"login" | "signup">(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+
+  // FIX: Update mode when URL changes
+  useEffect(() => {
+    const urlMode = searchParams.get("mode");
+    if (urlMode === "signup") {
+      setMode("signup");
+    } else if (urlMode === "login") {
+      setMode("login");
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -173,8 +189,11 @@ export default function AuthPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    setMode(mode === "login" ? "signup" : "login");
+                    const newMode = mode === "login" ? "signup" : "login";
+                    setMode(newMode);
                     setError("");
+                    // Update URL without page reload
+                    router.push(`/auth?mode=${newMode}`, { scroll: false });
                   }}
                   className="w-full text-center text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors">
                   {mode === "login"

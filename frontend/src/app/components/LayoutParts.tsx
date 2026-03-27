@@ -138,7 +138,7 @@ export function Navbar() {
                     Sign In
                   </Button>
                 </Link>
-                <Link href="/auth">
+                <Link href="/auth?mode=signup">
                   <Button
                     size="sm"
                     className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg shadow-blue-500/25">
