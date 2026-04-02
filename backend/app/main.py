@@ -17,6 +17,14 @@ from app.services.applications.router import router as applications_router
 from app.services.email.router import router as email_router
 from app.services.ai.router import router as ai_router
 from app.services.stripe.router import router as stripe_router
+from app.services.profile.router import router as profile_router
+from app.services.matching.router import router as matching_router
+from app.services.resume_generator.router import router as resume_generator_router
+from app.services.cover_letter.router import router as cover_letter_router
+from app.services.onboarding.router import router as onboarding_router
+from app.services.interview_prep.router import router as interview_prep_router
+
+
 
 
 scheduler: AsyncIOScheduler | None = None
@@ -97,7 +105,12 @@ app.include_router(applications_router)
 app.include_router(email_router)
 app.include_router(ai_router)
 app.include_router(stripe_router)
-
+app.include_router(profile_router)
+app.include_router(matching_router)
+app.include_router(resume_generator_router) 
+app.include_router(cover_letter_router)
+app.include_router(onboarding_router)
+app.include_router(interview_prep_router)
 
 @app.get("/")
 def root():

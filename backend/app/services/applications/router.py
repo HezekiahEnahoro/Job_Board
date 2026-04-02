@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func
 from app.core.db import get_db
@@ -36,6 +36,9 @@ class ApplicationOut(BaseModel):
     status: str
     notes: str | None
     applied_at: datetime | None
+    resume_id: int | None = None 
+    cover_letter_id: int | None = None 
+    applied_via: str | None = None
     created_at: datetime
     updated_at: datetime
     job: JobBasic
@@ -83,6 +86,9 @@ def create_application(
         status=app.status,
         notes=app.notes,
         applied_at=app.applied_at,
+        resume_id=app.resume_id,  
+        cover_letter_id=app.cover_letter_id,  
+        applied_via=app.applied_via,  
         created_at=app.created_at,
         updated_at=app.updated_at,
         job=JobBasic(
@@ -118,6 +124,9 @@ def list_applications(
                 status=app.status,
                 notes=app.notes,
                 applied_at=app.applied_at,
+                resume_id=app.resume_id,  
+                cover_letter_id=app.cover_letter_id,  
+                applied_via=app.applied_via, 
                 created_at=app.created_at,
                 updated_at=app.updated_at,
                 job=JobBasic(
@@ -174,6 +183,9 @@ def update_application(
         status=app.status,
         notes=app.notes,
         applied_at=app.applied_at,
+        resume_id=app.resume_id,
+        cover_letter_id=app.cover_letter_id,
+        applied_via=app.applied_via,
         created_at=app.created_at,
         updated_at=app.updated_at,
         job=JobBasic(
@@ -204,6 +216,43 @@ def delete_application(
     db.delete(app)
     db.commit()
     return {"ok": True}
+
+@router.post("/track-quick-apply")
+def track_quick_apply(
+    job_id: int = Query(..., description="Job ID"),
+    resume_id: int = Query(..., description="Resume ID"),
+    cover_letter_id: int | None = Query(None, description="Cover Letter ID"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Track application after Quick Apply"""
+    from app.core import crud
+    
+    print(f"📥 Track Quick Apply: user={current_user.id}, job={job_id}, resume={resume_id}, cover_letter={cover_letter_id}")
+    
+    try:
+        # Create/update application
+        application = crud.create_or_update_application(
+            db=db,
+            user_id=current_user.id,
+            job_id=job_id,
+            resume_id=resume_id,
+            cover_letter_id=cover_letter_id,
+            status="applied"
+        )
+        
+        print(f"✅ Application tracked: id={application.id}")
+        
+        return {
+            "success": True,
+            "message": "Application tracked successfully!",
+            "application_id": application.id,
+            "status": "applied"
+        }
+    except Exception as e:
+        print(f"❌ Error tracking application: {e}")
+        raise HTTPException(500, f"Failed to track application: {str(e)}")
+    
 
 @router.get("/stats")
 def get_stats(

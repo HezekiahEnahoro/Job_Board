@@ -16,6 +16,7 @@ import {
   ChevronRight,
   Briefcase,
   BarChart3,
+  Upload,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -46,9 +47,9 @@ export default function LandingPage() {
               {/* Badge */}
               <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-white/5 border border-white/10 backdrop-blur-xl hover:border-white/20 transition-all group cursor-pointer">
                 <div className="flex items-center gap-2">
-                  <Shield className="h-4 w-4 text-green-400" />
+                  <Sparkles className="h-4 w-4 text-blue-400" />
                   <span className="text-sm font-medium">
-                    Trusted by 10,000+ professionals
+                    AI tailors your resume in 3 seconds
                   </span>
                 </div>
                 <ChevronRight className="h-4 w-4 text-white/50 group-hover:translate-x-1 transition-transform" />
@@ -56,42 +57,71 @@ export default function LandingPage() {
 
               {/* Main Headline */}
               <div className="space-y-6">
-                <h1 className="text-6xl sm:text-7xl lg:text-8xl font-black tracking-tight">
-                  <span className="block mb-4">Track Every Phase</span>
+                <h1 className="text-4xl sm:text-6xl lg:text-7xl xl:text-8xl font-black tracking-tight">
+                  <span className="block mb-4">Stop Spending 30 Minutes</span>
                   <span className="block bg-gradient-to-r from-blue-400 via-cyan-400 to-purple-400 bg-clip-text text-transparent animate-gradient-x">
-                    Of Your Job Search
+                    Per Job Application
                   </span>
                 </h1>
 
-                <p className="max-w-3xl mx-auto text-xl sm:text-2xl text-gray-400 leading-relaxed font-light">
-                  Navigate your job search with confidence. Track applications,{" "}
-                  <span className="text-white font-medium">
-                    analyze resumes with AI
-                  </span>
-                  , and get actionable insights through every phase—from
-                  discovery to offer.
+                <p className="max-w-3xl mx-auto text-base sm:text-xl lg:text-2xl text-gray-400 leading-relaxed font-light px-4 sm:px-0">
+                  <span className="text-white font-bold">
+                    Quick Apply with AI:
+                  </span>{" "}
+                  Tailored resume in 3 seconds. Auto-generated cover letter in 5
+                  seconds. One-click application tracking.
                 </p>
+
+                {/* Value Props */}
+                <div className="flex flex-wrap justify-center gap-4 sm:gap-6 pt-6 px-4">
+                  {[
+                    {
+                      icon: Zap,
+                      text: "3-sec AI resume tailoring",
+                      color: "text-yellow-400",
+                    },
+                    {
+                      icon: Brain,
+                      text: "Auto cover letter generation",
+                      color: "text-purple-400",
+                    },
+                    {
+                      icon: CheckCircle2,
+                      text: "One-click tracking",
+                      color: "text-green-400",
+                    },
+                  ].map((item, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <item.icon
+                        className={`h-4 w-4 sm:h-5 sm:w-5 ${item.color}`}
+                      />
+                      <span className="text-white font-medium text-xs sm:text-sm">
+                        {item.text}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               {/* CTA Section */}
-              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-8">
-                <Link href="/auth?mode=signup">
+              <div className="flex flex-col sm:flex-row gap-4 justify-center items-stretch sm:items-center pt-8 px-4">
+                <Link href="/auth?mode=signup" className="w-full sm:w-auto">
                   <Button
                     size="lg"
-                    className="group relative h-16 px-12 text-lg font-bold overflow-hidden bg-white text-black hover:bg-white/90 shadow-2xl shadow-blue-500/25 hover:shadow-blue-500/50 transition-all duration-300">
-                    <span className="relative z-10 flex items-center gap-3">
-                      Start Free Today
-                      <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                    className="w-full sm:w-auto group relative h-14 sm:h-16 px-8 sm:px-12 text-base sm:text-lg font-bold overflow-hidden bg-white text-black hover:bg-white/90 shadow-2xl shadow-blue-500/25 hover:shadow-blue-500/50 transition-all duration-300">
+                    <span className="relative z-10 flex items-center justify-center gap-3">
+                      Try Quick Apply Free
+                      <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 group-hover:translate-x-1 transition-transform" />
                     </span>
                   </Button>
                 </Link>
 
-                <Link href="/jobs">
+                <Link href="/jobs" className="w-full sm:w-auto">
                   <Button
                     size="lg"
                     variant="outline"
-                    className="h-16 px-12 text-lg font-semibold border-2 border-white/20 bg-white/5 hover:bg-white/10 hover:border-white/30 backdrop-blur-xl transition-all duration-300">
-                    Browse 400+ Remote Jobs
+                    className="w-full sm:w-auto h-14 sm:h-16 px-8 sm:px-12 text-base sm:text-lg font-semibold border-2 border-white/20 bg-white/5 hover:bg-white/10 hover:border-white/30 backdrop-blur-xl transition-all duration-300">
+                    Browse 3,400+ Jobs
                   </Button>
                 </Link>
               </div>
@@ -103,172 +133,60 @@ export default function LandingPage() {
                   <span>No credit card required</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Zap className="h-4 w-4 text-yellow-400" />
-                  <span>2-minute setup</span>
+                  <Shield className="h-4 w-4 text-blue-400" />
+                  <span>Free forever plan</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Shield className="h-4 w-4 text-blue-400" />
-                  <span>Bank-level security</span>
+                  <Zap className="h-4 w-4 text-yellow-400" />
+                  <span>60-second setup</span>
+                </div>
+              </div>
+
+              {/* Social Proof - Inline */}
+              <div className="pt-8">
+                <p className="text-gray-500 text-sm mb-4">
+                  TRUSTED BY JOB SEEKERS AT
+                </p>
+                <div className="flex flex-wrap justify-center gap-8 opacity-50">
+                  {["Google", "Meta", "Amazon", "Microsoft", "Apple"].map(
+                    (company, i) => (
+                      <span key={i} className="text-gray-600 font-bold text-lg">
+                        {company}
+                      </span>
+                    ),
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* Dashboard Preview */}
+            {/* Quick Apply Demo Video/GIF Placeholder */}
             <div className="mt-20 relative">
               <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-cyan-500/20 rounded-3xl blur-3xl"></div>
               <div className="relative group">
                 <div className="absolute -inset-1 bg-gradient-to-r from-blue-500 via-purple-500 to-cyan-500 rounded-3xl opacity-50 group-hover:opacity-75 blur-2xl transition-all duration-500"></div>
                 <div className="relative rounded-2xl border border-white/10 bg-gradient-to-br from-gray-900 to-black overflow-hidden shadow-2xl">
-                  {/* Real Dashboard UI */}
-                  <div className="aspect-video relative bg-black">
-                    <div className="absolute inset-0 p-4 sm:p-6 lg:p-8">
-                      {/* Header */}
-                      <div className="flex items-center justify-between mb-6">
-                        <div>
-                          <h1 className="text-lg sm:text-2xl font-black tracking-tight">
-                            Application Tracker
-                          </h1>
-                          <p className="text-xs sm:text-sm text-gray-400 mt-1">
-                            Welcome back, Alex
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="group relative">
-                            <div className="absolute -inset-0.5 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full blur opacity-75"></div>
-                            <div className="relative inline-flex items-center gap-1.5 px-3 py-1.5 bg-black rounded-full border border-yellow-500/50">
-                              <Crown className="h-3 w-3 sm:h-4 sm:w-4 text-yellow-400" />
-                              <span className="text-xs font-bold text-yellow-400">
-                                PRO
-                              </span>
-                            </div>
-                          </div>
-                        </div>
+                  {/* Quick Apply Demo */}
+                  <div className="aspect-video relative bg-black flex items-center justify-center">
+                    <div className="text-center space-y-6 p-8">
+                      <div className="inline-flex p-6 rounded-2xl bg-gradient-to-br from-blue-600 to-purple-600 mb-4">
+                        <Sparkles className="h-12 w-12 text-white" />
                       </div>
-
-                      {/* Stats Grid */}
-                      <div className="grid grid-cols-5 gap-2 sm:gap-3 mb-6">
-                        {[
-                          {
-                            label: "Total",
-                            value: "24",
-                            gradient: "from-white/10 to-white/5",
-                          },
-                          {
-                            label: "Saved",
-                            value: "6",
-                            gradient: "from-slate-500 to-slate-600",
-                          },
-                          {
-                            label: "Applied",
-                            value: "12",
-                            gradient: "from-blue-500 to-blue-600",
-                          },
-                          {
-                            label: "Interview",
-                            value: "4",
-                            gradient: "from-purple-500 to-purple-600",
-                          },
-                          {
-                            label: "Offer",
-                            value: "2",
-                            gradient: "from-green-500 to-green-600",
-                          },
-                        ].map((stat, i) => (
-                          <div key={i} className="group relative">
-                            <div
-                              className={`absolute -inset-px bg-gradient-to-br ${stat.gradient} rounded-lg opacity-0 group-hover:opacity-100 blur transition`}></div>
-                            <div className="relative h-full rounded-lg border border-white/10 bg-white/5 backdrop-blur-xl p-2 sm:p-3 group-hover:border-white/20 transition">
-                              <div className="text-lg sm:text-2xl font-black text-white">
-                                {stat.value}
-                              </div>
-                              <div className="text-[8px] sm:text-xs text-gray-400">
-                                {stat.label}
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Application Cards */}
-                      <div className="space-y-2 sm:space-y-3">
-                        {[
-                          {
-                            title: "Senior Frontend Engineer",
-                            company: "Stripe",
-                            location: "Remote - US",
-                            status: "Interview",
-                            statusColor: "from-purple-500 to-purple-600",
-                            statusBg: "bg-purple-500/10",
-                            statusText: "text-purple-400",
-                          },
-                          {
-                            title: "Product Designer",
-                            company: "Vercel",
-                            location: "Remote - Global",
-                            status: "Applied",
-                            statusColor: "from-blue-500 to-blue-600",
-                            statusBg: "bg-blue-500/10",
-                            statusText: "text-blue-400",
-                          },
-                          {
-                            title: "Full Stack Developer",
-                            company: "Linear",
-                            location: "Remote - Europe",
-                            status: "Saved",
-                            statusColor: "from-slate-500 to-slate-600",
-                            statusBg: "bg-slate-500/10",
-                            statusText: "text-slate-400",
-                          },
-                        ].map((app, i) => (
-                          <div key={i} className="group relative">
-                            <div
-                              className={`absolute -inset-px bg-gradient-to-r ${app.statusColor} rounded-xl opacity-0 group-hover:opacity-100 blur transition`}></div>
-                            <div className="relative rounded-xl border border-white/10 bg-white/5 backdrop-blur-xl p-3 sm:p-4 group-hover:border-white/20 transition">
-                              <div className="flex items-start justify-between gap-3">
-                                {/* Left: Job Info */}
-                                <div className="flex-1 space-y-1.5 min-w-0">
-                                  <h3 className="text-xs sm:text-sm font-bold text-white truncate">
-                                    {app.title}
-                                  </h3>
-                                  <div className="flex flex-wrap items-center gap-1.5 text-[10px] sm:text-xs text-gray-400">
-                                    <span className="font-medium">
-                                      {app.company}
-                                    </span>
-                                    <span className="hidden sm:inline">•</span>
-                                    <span className="hidden sm:inline">
-                                      {app.location}
-                                    </span>
-                                  </div>
-                                  <div className="inline-flex">
-                                    <div
-                                      className={`px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[8px] sm:text-xs font-bold ${app.statusBg} ${app.statusText} border border-white/10`}>
-                                      {app.status}
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Right: Actions */}
-                                <div className="flex flex-col gap-1.5">
-                                  <div className="w-16 sm:w-24 h-6 sm:h-8 border border-white/10 bg-white/5 rounded text-[8px] sm:text-xs flex items-center justify-center text-gray-400">
-                                    Status
-                                  </div>
-                                  <div className="w-16 sm:w-24 h-6 sm:h-8 border border-red-500/20 bg-red-500/10 rounded text-[8px] sm:text-xs flex items-center justify-center text-red-400">
-                                    Remove
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Overlay Label */}
-                    <div className="absolute bottom-4 right-4 sm:bottom-6 sm:right-6">
-                      <div className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-full bg-black/50 backdrop-blur-xl border border-white/10">
-                        <span className="text-[10px] sm:text-xs text-gray-400 font-medium">
-                          Live Dashboard Preview
-                        </span>
+                      <h3 className="text-3xl font-bold">Quick Apply Demo</h3>
+                      <p className="text-gray-400 max-w-md mx-auto">
+                        Watch how AI tailors your resume for each job in 3
+                        seconds
+                      </p>
+                      <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                        <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+                          <span className="mr-2">▶</span> Watch Demo
+                        </Button>
+                        <Link href="/jobs">
+                          <Button
+                            variant="outline"
+                            className="border-white/20 hover:bg-white/10">
+                            Try It Now
+                          </Button>
+                        </Link>
                       </div>
                     </div>
                   </div>
@@ -281,29 +199,37 @@ export default function LandingPage() {
         {/* Social Proof Bar */}
         <section className="relative border-y border-white/5 bg-white/[0.02] backdrop-blur-xl py-8">
           <div className="mx-auto max-w-7xl px-6 lg:px-8">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-12 text-center">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-12 text-center">
               <div className="space-y-2">
                 <div className="text-5xl font-black bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-                  10K+
+                  3 sec
                 </div>
                 <div className="text-sm text-gray-400 font-medium">
-                  Active Users
+                  AI Resume Tailoring
                 </div>
               </div>
               <div className="space-y-2">
                 <div className="text-5xl font-black bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                  400+
+                  3,400+
                 </div>
                 <div className="text-sm text-gray-400 font-medium">
-                  Remote Jobs Updated Daily
+                  Live Remote Jobs
                 </div>
               </div>
               <div className="space-y-2">
                 <div className="text-5xl font-black bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">
+                  97%
+                </div>
+                <div className="text-sm text-gray-400 font-medium">
+                  Time Saved vs Manual
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="text-5xl font-black bg-gradient-to-r from-yellow-400 to-orange-400 bg-clip-text text-transparent">
                   $15
                 </div>
                 <div className="text-sm text-gray-400 font-medium">
-                  vs $49+ Competitors
+                  vs $49/mo Competitors
                 </div>
               </div>
             </div>
@@ -328,32 +254,32 @@ export default function LandingPage() {
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
               {[
                 {
+                  icon: Zap,
+                  title: "⚡ Quick Apply",
+                  description:
+                    "AI tailors your resume in 3 seconds. Auto-generates cover letter. One-click tracking. Apply to 10x more jobs.",
+                  gradient: "from-yellow-500 to-orange-500",
+                },
+                {
                   icon: Target,
                   title: "Smart Tracker",
                   description:
-                    "Kanban-style pipeline with drag-and-drop. Track every application from discovery to offer.",
+                    "Track every application from discovery to offer. Status pipeline, notes, reminders.",
                   gradient: "from-blue-500 to-cyan-500",
                 },
                 {
                   icon: Brain,
-                  title: "AI Resume Analyzer",
+                  title: "AI Match Scoring",
                   description:
-                    "Instant ATS scores, keyword gaps, and AI-generated cover letters tailored to each job.",
+                    "See exactly why you're a good fit. Skills match, experience match, preferences match.",
                   gradient: "from-purple-500 to-pink-500",
                 },
                 {
-                  icon: BarChart3,
-                  title: "Analytics Dashboard",
-                  description:
-                    "Real-time insights on response rates, interview conversions, and strategy optimization.",
-                  gradient: "from-green-500 to-emerald-500",
-                },
-                {
                   icon: Briefcase,
-                  title: "Remote Job Board",
+                  title: "3,400+ Remote Jobs",
                   description:
-                    "Curated remote opportunities updated daily from top companies worldwide.",
-                  gradient: "from-orange-500 to-red-500",
+                    "Curated opportunities updated daily. Filter by skills, location, salary.",
+                  gradient: "from-green-500 to-emerald-500",
                 },
               ].map((feature, i) => (
                 <div
@@ -386,7 +312,81 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
+        {/* How It Works */}
+        <section className="relative py-32 px-6 lg:px-8 bg-gradient-to-br from-blue-950/20 to-purple-950/20">
+          <div className="mx-auto max-w-7xl">
+            <div className="text-center space-y-4 mb-20">
+              <div className="inline-block text-sm font-semibold px-4 py-2 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                HOW IT WORKS
+              </div>
+              <h2 className="text-5xl sm:text-6xl font-black">
+                <span className="block mb-2">From Job to Applied</span>
+                <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                  In Under 10 Seconds
+                </span>
+              </h2>
+            </div>
 
+            <div className="grid md:grid-cols-3 gap-8">
+              {[
+                {
+                  step: "01",
+                  title: "Upload Resume Once",
+                  description:
+                    "We parse your skills, experience, and education with AI.",
+                  icon: Upload,
+                  color: "from-blue-500 to-cyan-500",
+                },
+                {
+                  step: "02",
+                  title: "Click Quick Apply",
+                  description:
+                    "AI tailors your resume and generates a cover letter in 3-5 seconds.",
+                  icon: Sparkles,
+                  color: "from-purple-500 to-pink-500",
+                },
+                {
+                  step: "03",
+                  title: "Apply Manually",
+                  description:
+                    "Download tailored resume. We auto-track the application for you.",
+                  icon: CheckCircle2,
+                  color: "from-green-500 to-emerald-500",
+                },
+              ].map((item, i) => (
+                <div key={i} className="relative group">
+                  <div
+                    className={`absolute -inset-px rounded-2xl bg-gradient-to-r ${item.color} opacity-0 group-hover:opacity-100 blur transition-all duration-500`}></div>
+                  <div className="relative h-full rounded-2xl border border-white/10 bg-gradient-to-br from-gray-900/50 to-black/50 backdrop-blur-xl p-8">
+                    <div className="flex items-start gap-4 mb-6">
+                      <div
+                        className={`inline-flex p-4 rounded-xl bg-gradient-to-br ${item.color}`}>
+                        <item.icon className="h-6 w-6 text-white" />
+                      </div>
+                      <span className="text-6xl font-black text-white/10">
+                        {item.step}
+                      </span>
+                    </div>
+                    <h3 className="text-2xl font-bold mb-3">{item.title}</h3>
+                    <p className="text-gray-400 leading-relaxed">
+                      {item.description}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-12 text-center">
+              <p className="text-gray-500 mb-6">
+                Traditional application:{" "}
+                <span className="line-through">30 minutes</span>
+              </p>
+              <p className="text-3xl font-black bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                With MyJobPhase: 8 seconds ⚡
+              </p>
+            </div>
+          </div>
+        </section>
         {/* Pricing Section */}
         <section className="relative py-32 px-6 lg:px-8">
           <div className="mx-auto max-w-7xl">

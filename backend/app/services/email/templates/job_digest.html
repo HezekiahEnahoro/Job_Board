@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Weekly Job Digest</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #000000;
+            color: #ffffff;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        .header {
+            text-align: center;
+            padding: 30px 0;
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            border-radius: 16px;
+            margin-bottom: 40px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 32px;
+            font-weight: 900;
+            color: #ffffff;
+        }
+        .header p {
+            margin: 10px 0 0 0;
+            font-size: 16px;
+            color: #e0e7ff;
+        }
+        .job-card {
+            background: #1a1a1a;
+            border: 1px solid #333333;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            position: relative;
+        }
+        .match-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+        .match-high {
+            background: rgba(34, 197, 94, 0.2);
+            color: #4ade80;
+            border: 1px solid rgba(34, 197, 94, 0.4);
+        }
+        .match-medium {
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+            border: 1px solid rgba(59, 130, 246, 0.4);
+        }
+        .match-low {
+            background: rgba(168, 85, 247, 0.2);
+            color: #c084fc;
+            border: 1px solid rgba(168, 85, 247, 0.4);
+        }
+        .job-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #ffffff;
+            margin: 0 0 8px 0;
+        }
+        .job-company {
+            font-size: 14px;
+            color: #9ca3af;
+            margin: 0 0 16px 0;
+        }
+        .job-details {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+            font-size: 14px;
+            color: #9ca3af;
+        }
+        .job-detail-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .skills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        .skill-tag {
+            background: rgba(34, 197, 94, 0.15);
+            color: #4ade80;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            color: #ffffff;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 14px;
+            transition: opacity 0.2s;
+        }
+        .cta-button:hover {
+            opacity: 0.9;
+        }
+        .footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: #6b7280;
+            font-size: 12px;
+            border-top: 1px solid #333333;
+            margin-top: 40px;
+        }
+        .footer a {
+            color: #60a5fa;
+            text-decoration: none;
+        }
+        .stats {
+            background: #1a1a1a;
+            border: 1px solid #333333;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .stats-grid {
+            display: flex;
+            justify-content: space-around;
+            gap: 20px;
+        }
+        .stat-item {
+            flex: 1;
+        }
+        .stat-value {
+            font-size: 32px;
+            font-weight: 900;
+            background: linear-gradient(135deg, #60a5fa 0%, #c084fc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #9ca3af;
+            margin-top: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>⚡ Your Job Digest</h1>
+            <p>{{ jobs_count }} jobs matching your profile</p>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats">
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-value">{{ jobs_count }}</div>
+                    <div class="stat-label">New Jobs</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">{{ avg_match }}%</div>
+                    <div class="stat-label">Avg Match</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">{{ remote_count }}</div>
+                    <div class="stat-label">Remote</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Jobs -->
+        {% for job in jobs %}
+        <div class="job-card">
+            <!-- Match Badge -->
+            <span class="match-badge {% if job.match_score >= 85 %}match-high{% elif job.match_score >= 70 %}match-medium{% else %}match-low{% endif %}">
+                ✨ {{ job.match_score }}% Match
+            </span>
+
+            <!-- Job Info -->
+            <h2 class="job-title">{{ job.title }}</h2>
+            <p class="job-company">{{ job.company }}</p>
+
+            <!-- Details -->
+            <div class="job-details">
+                {% if job.location %}
+                <div class="job-detail-item">
+                    📍 {{ job.location }}
+                </div>
+                {% endif %}
+                {% if job.remote_flag %}
+                <div class="job-detail-item">
+                    🌍 Remote
+                </div>
+                {% endif %}
+                <div class="job-detail-item">
+                    📅 {{ job.posted_date }}
+                </div>
+            </div>
+
+            <!-- Matched Skills -->
+            {% if job.matched_skills %}
+            <div class="skills">
+                {% for skill in job.matched_skills[:5] %}
+                <span class="skill-tag">✓ {{ skill }}</span>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- CTA -->
+            <a href="{{ job.apply_url }}" class="cta-button">
+                View Job & Quick Apply →
+            </a>
+        </div>
+        {% endfor %}
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>
+                You're receiving this because you enabled job alerts on MyJobPhase.<br>
+                <a href="{{ unsubscribe_url }}">Unsubscribe</a> | 
+                <a href="{{ settings_url }}">Manage Preferences</a>
+            </p>
+            <p style="margin-top: 20px; color: #4b5563;">
+                © 2026 MyJobPhase. Built for ambitious professionals.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

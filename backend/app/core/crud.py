@@ -62,6 +62,11 @@ def list_jobs(
     stmt = stmt.limit(limit).offset(offset)
     return db.execute(stmt).scalars().all()
 
+def get_job(db: Session, job_id: int):
+    """Get a single job by ID"""
+    from app.core.models import Job
+    return db.query(Job).filter(Job.id == job_id).first()
+
 def list_jobs_paginated(
     db: Session,
     q: str | None = None,
@@ -122,3 +127,56 @@ def list_jobs_paginated(
         "next": next_offset,
         "items": rows
     }
+
+def create_or_update_application(
+    db: Session,
+    user_id: int,
+    job_id: int,
+    resume_id: int = None,
+    cover_letter_id: int = None,
+    status: str = "applied"
+):
+    """Create or update application with generated content"""
+    from app.services.auth.models import Application
+    from datetime import datetime
+    
+    print(f"🔍 CRUD: Creating/updating application for user={user_id}, job={job_id}")
+    
+    # Check if application already exists
+    existing = db.query(Application).filter(
+        Application.user_id == user_id,
+        Application.job_id == job_id
+    ).first()
+    
+    if existing:
+        print(f"📝 Updating existing application id={existing.id}")
+        # Update existing
+        existing.status = status
+        existing.resume_id = resume_id
+        existing.cover_letter_id = cover_letter_id
+        existing.applied_via = "quick_apply"
+        existing.applied_at = datetime.utcnow()
+        existing.updated_at = datetime.utcnow()
+        db.commit()
+        db.refresh(existing)
+        return existing
+    
+    # Create new
+    print(f"✨ Creating new application")
+    job = get_job(db, job_id)
+    application = Application(
+        user_id=user_id,
+        job_id=job_id,
+        resume_id=resume_id,
+        cover_letter_id=cover_letter_id,
+        status=status,
+        applied_via="quick_apply",
+        job_url=job.apply_url if job else None,
+        applied_at=datetime.utcnow()
+    )
+    
+    db.add(application)
+    db.commit()
+    db.refresh(application)
+    print(f"✅ Created application id={application.id}")
+    return application

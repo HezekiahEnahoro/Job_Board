@@ -363,7 +363,52 @@ export default function AnalyzePage() {
         )}
 
         {/* Actions */}
-        <div className="flex gap-4">
+        <div className="space-y-4">
+          {/* Primary Actions Row */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Button
+              onClick={() => {
+                // Download PDF - we'll create this endpoint
+                window.open(
+                  `${API}/ai/analysis/${result.id}/download`,
+                  "_blank",
+                );
+              }}
+              className="h-14 text-base bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 shadow-lg shadow-blue-500/25">
+              <svg
+                className="w-5 h-5 mr-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
+              Download PDF
+            </Button>
+
+            <Button
+              onClick={() => {
+                // Navigate to full report page
+                router.push(`/analyze/${result.id}`);
+              }}
+              className="h-14 text-base bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-lg shadow-purple-500/25">
+              <FileText className="w-5 h-5 mr-2" />
+              View Full Report
+            </Button>
+
+            <Button
+              onClick={() => router.push("/dashboard")}
+              className="h-14 text-base bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-lg shadow-green-500/25">
+              <CheckCircle2 className="w-5 h-5 mr-2" />
+              Go to Dashboard
+            </Button>
+          </div>
+
+          {/* Secondary Action */}
           <Button
             variant="outline"
             onClick={() => {
@@ -375,13 +420,8 @@ export default function AnalyzePage() {
               setManualDescription("");
               setStep(1);
             }}
-            className="flex-1 h-14 border-white/10 bg-white/5 hover:bg-white/10 text-base">
+            className="w-full h-12 border-white/10 bg-white/5 hover:bg-white/10 text-base">
             Analyze Another Resume
-          </Button>
-          <Button
-            onClick={() => router.push("/dashboard")}
-            className="flex-1 h-14 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-base">
-            Go to Dashboard
           </Button>
         </div>
 

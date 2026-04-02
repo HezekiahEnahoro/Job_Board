@@ -25,6 +25,8 @@ class User(Base):
     saved_jobs = relationship("SavedJob", back_populates="user", cascade="all, delete-orphan")
     applications = relationship("Application", back_populates="user", cascade="all, delete-orphan")
     resume_analyses = relationship("ResumeAnalysis", back_populates="user", cascade="all, delete-orphan")
+    email_preferences = relationship("EmailPreferences", back_populates="user", uselist=False)
+
 
 class SavedJob(Base):
     __tablename__ = "saved_jobs"
@@ -47,6 +49,12 @@ class Application(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     job_id: Mapped[int] = mapped_column(Integer, ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False)
+
+    resume_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    cover_letter_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    applied_via: Mapped[str | None] = mapped_column(String(50), default="manual", nullable=True)
+    job_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    
     
     status: Mapped[str] = mapped_column(String(50), default="saved", nullable=False)
     applied_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -90,3 +98,26 @@ class ResumeAnalysis(Base):
 
 # Add to User model
 User.resume_analyses = relationship("ResumeAnalysis", back_populates="user", cascade="all, delete-orphan")
+
+
+class EmailPreferences(Base):
+    __tablename__ = "email_preferences"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
+    
+    # Frequency
+    enabled = Column(Boolean, default=True)
+    frequency = Column(String(20), default="weekly")  # daily, weekly, disabled
+    
+    # Filters
+    min_match_score = Column(Integer, default=70)
+    remote_only = Column(Boolean, default=False)
+    
+    # Metadata
+    last_sent_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationship
+    user = relationship("User", back_populates="email_preferences")

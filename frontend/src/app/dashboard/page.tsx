@@ -41,6 +41,9 @@ type Application = {
   applied_at: string | null;
   created_at: string;
   updated_at: string;
+  resume_id?: number | null;
+  cover_letter_id?: number | null;
+  applied_via?: string | null;
   job: {
     id: number;
     title: string;
@@ -91,6 +94,13 @@ const STATUS_CONFIG = {
     border: "border-red-500/20",
     text: "text-red-400",
   },
+};
+
+const getStatusBadgeClass = (status: string) => {
+  const config = STATUS_CONFIG[status as keyof typeof STATUS_CONFIG];
+  return config
+    ? `${config.bg} ${config.text} border ${config.border}`
+    : "bg-gray-500/20 text-gray-400 border border-gray-500/20";
 };
 
 function DashboardContent() {
@@ -332,8 +342,8 @@ function DashboardContent() {
 
       {/* Stats Grid */}
       {stats && (
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
-          <div className="group relative">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4">
+          <div className="group relative col-span-2 sm:col-span-3 md:col-span-1">
             <div className="absolute -inset-px bg-gradient-to-br from-white/10 to-white/5 rounded-xl opacity-0 group-hover:opacity-100 transition"></div>
             <div className="relative h-full rounded-xl border border-white/10 bg-white/5 backdrop-blur-xl p-6 group-hover:border-white/20 transition">
               <div className="text-4xl font-black">{stats.total}</div>
@@ -422,10 +432,18 @@ function DashboardContent() {
           {filtered.map((app) => {
             const config =
               STATUS_CONFIG[app.status as keyof typeof STATUS_CONFIG];
+            console.log("🔍 App:", app.id, {
+              applied_via: app.applied_via,
+              resume_id: app.resume_id,
+              cover_letter_id: app.cover_letter_id,
+              shouldShowQuickApply:
+                app.applied_via === "quick_apply" &&
+                (app.resume_id || app.cover_letter_id),
+            });
             return (
               <div key={app.id} className="group relative">
                 <div
-                  className={`absolute -inset-px bg-gradient-to-r ${config.color} rounded-2xl opacity-0 group-hover:opacity-100 blur transition`}></div>
+                  className={`absolute -inset-px bg-gradient-to-r ${config.color} rounded-2xl opacity-0 group-hover:opacity-100 blur transition pointer-events-none`}></div>
                 <div className="relative rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl p-6 group-hover:border-white/20 transition">
                   <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
                     {/* Left: Job Info */}
@@ -445,13 +463,124 @@ function DashboardContent() {
                         </div>
                       </div>
 
-                      {/* Status Badge */}
-                      <div className="inline-flex">
-                        <div
-                          className={`px-3 py-1 rounded-full text-xs font-bold ${config.bg} ${config.text} border ${config.border}`}>
-                          {config.label}
+                      {/* Quick Apply Section */}
+                      {app.applied_via === "quick_apply" &&
+                      (app.resume_id || app.cover_letter_id) ? (
+                        <div className="p-4 rounded-xl bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/20">
+                          <div className="flex items-center gap-2 mb-3">
+                            <span className="px-3 py-1 rounded-full bg-green-500/20 text-green-400 border border-green-500/30 text-xs font-bold flex items-center gap-1.5">
+                              <svg
+                                className="w-3.5 h-3.5"
+                                fill="currentColor"
+                                viewBox="0 0 20 20">
+                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                              </svg>
+                              Quick Apply
+                            </span>
+                            {app.applied_at && (
+                              <span className="text-xs text-gray-400">
+                                Applied{" "}
+                                {new Date(app.applied_at).toLocaleDateString()}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Generated Content Badges */}
+                          <div className="flex flex-wrap gap-2">
+                            {app.resume_id && (
+                              <button
+                                onClick={() =>
+                                  window.open(
+                                    `${API}/resume-generator/${app.resume_id}/view`,
+                                    "_blank",
+                                  )
+                                }
+                                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 transition text-sm font-medium">
+                                <svg
+                                  className="w-4 h-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24">
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                  />
+                                </svg>
+                                View Tailored Resume
+                              </button>
+                            )}
+
+                            {app.cover_letter_id && (
+                              <button
+                                onClick={() =>
+                                  window.open(
+                                    `${API}/cover-letter/${app.cover_letter_id}/view`,
+                                    "_blank",
+                                  )
+                                }
+                                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-purple-500/10 text-purple-400 border border-purple-500/20 hover:bg-purple-500/20 transition text-sm font-medium">
+                                <svg
+                                  className="w-4 h-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24">
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                                  />
+                                </svg>
+                                View Cover Letter
+                              </button>
+                            )}
+                            <button
+                              onClick={() => router.push(`/prep/${app.job.id}`)}
+                              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r from-purple-500/10 to-pink-500/10 text-purple-400 border border-purple-500/20 hover:from-purple-500/20 hover:to-pink-500/20 transition text-sm font-medium">
+                              <svg
+                                className="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+                                />
+                              </svg>
+                              Prep Interview
+                            </button>
+                          </div>
                         </div>
-                      </div>
+                      ) : (
+                        /* Status Badge + Prep Interview for non-Quick Apply */
+                        <div className="inline-flex">
+                          <div
+                            className={`px-3 py-1 rounded-full text-xs font-bold ${config.bg} ${config.text} border ${config.border}`}>
+                            {config.label}
+                          </div>
+                          <button
+                            onClick={() => router.push(`/prep/${app.job.id}`)}
+                            className="px-3 py-1 rounded-full bg-gradient-to-r from-purple-500/10 to-pink-500/10 text-purple-400 border border-purple-500/20 hover:from-purple-500/20 hover:to-pink-500/20 transition text-xs font-bold flex items-center gap-1.5">
+                            <svg
+                              className="w-3.5 h-3.5"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24">
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+                              />
+                            </svg>
+                            Prep Interview
+                          </button>
+                        </div>
+                      )}
 
                       {/* Notes */}
                       {editingNotes === app.id ? (
@@ -515,7 +644,7 @@ function DashboardContent() {
                             target="_blank"
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-1 text-sm text-blue-400 hover:text-blue-300 transition">
-                            Apply now
+                            View job posting
                             <ExternalLink className="h-3 w-3" />
                           </a>
                         )}

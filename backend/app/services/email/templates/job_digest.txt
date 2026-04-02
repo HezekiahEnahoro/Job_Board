@@ -1,0 +1,35 @@
+## 📝 **STEP 2: PLAIN TEXT EMAIL TEMPLATE**
+
+**File: `backend/app/services/email_alerts/templates/job_digest.txt`**
+```
+⚡ YOUR JOB DIGEST
+{{ jobs_count }} jobs matching your profile
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SUMMARY
+{{ jobs_count }} New Jobs | {{ avg_match }}% Avg Match | {{ remote_count }} Remote
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+{% for job in jobs %}
+✨ {{ job.match_score }}% MATCH
+
+{{ job.title }}
+{{ job.company }}
+
+{% if job.location %}📍 {{ job.location }}{% endif %}{% if job.remote_flag %} | 🌍 Remote{% endif %} | 📅 {{ job.posted_date }}
+
+{% if job.matched_skills %}Matched Skills: {{ job.matched_skills|join(', ') }}{% endif %}
+
+→ Apply: {{ job.apply_url }}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+{% endfor %}
+
+MANAGE YOUR PREFERENCES
+Settings: {{ settings_url }}
+Unsubscribe: {{ unsubscribe_url }}
+
+© 2026 MyJobPhase

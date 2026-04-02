@@ -181,3 +181,83 @@ def send_weekly_digest(to_email: str, stats: dict, recent_apps: list):
     except Exception as e:
         print(f"❌ Failed to send weekly digest to {to_email}: {e}")
         return None
+
+def send_job_digest(to_email: str, jobs: list, user_name: Optional[str] = None, user_id: Optional[int] = None):
+    """Send digest of new matching jobs"""
+    name = user_name or to_email.split("@")[0]
+    
+    # Build jobs list HTML
+    jobs_html = ""
+    for job in jobs[:10]:  # Max 10 jobs
+        match_badge = ""
+        if job.get('match_score'):
+            score = job['match_score']
+            color = "#10b981" if score >= 80 else "#3b82f6" if score >= 70 else "#6b7280"
+            match_badge = f'<span style="background-color: {color}20; color: {color}; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: bold;">{score}% Match</span>'
+        
+        jobs_html += f"""
+        <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; padding: 16px; border-radius: 8px; margin: 12px 0;">
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+                <h3 style="margin: 0; color: #1f2937; font-size: 18px;">{job['title']}</h3>
+                {match_badge}
+            </div>
+            <p style="margin: 4px 0; color: #6b7280; font-size: 14px;">
+                <strong>{job['company']}</strong> • {job.get('location', 'Remote')}
+            </p>
+            <a href="http://localhost:3000/jobs?job_id={job['id']}" 
+               style="display: inline-block; margin-top: 12px; background-color: #2563eb; color: white; 
+                      padding: 8px 16px; text-decoration: none; border-radius: 6px; font-size: 14px;">
+                View Job →
+            </a>
+        </div>
+        """
+    
+    # Footer with unsubscribe
+    footer = f"""
+    <p style="color: #6b7280; font-size: 14px; margin-top: 32px;">
+        Don't want these emails? 
+        <a href="http://localhost:3000/settings" style="color: #2563eb;">Manage preferences</a>
+        {f' or <a href="http://localhost:3000/api/emails/unsubscribe/{user_id}" style="color: #2563eb;">Unsubscribe</a>' if user_id else ''}
+    </p>
+    """
+    
+    html = f"""
+    <html>
+    <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h1 style="color: #2563eb;">🎯 New Jobs Matching Your Profile</h1>
+        
+        <p>Hi {name},</p>
+        
+        <p>We found <strong>{len(jobs)}</strong> new job{'' if len(jobs) == 1 else 's'} that match your skills and preferences!</p>
+        
+        {jobs_html}
+        
+        <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e5e7eb;">
+            <p>
+                <a href="http://localhost:3000/jobs" 
+                   style="background-color: #2563eb; color: white; padding: 12px 24px; 
+                          text-decoration: none; border-radius: 6px; display: inline-block;">
+                    Browse All Jobs →
+                </a>
+            </p>
+        </div>
+        
+        {footer}
+    </body>
+    </html>
+    """
+    
+    try:
+        params = {
+            "from": FROM_EMAIL,
+            "to": [to_email],
+            "subject": f"🎯 {len(jobs)} New Job{'' if len(jobs) == 1 else 's'} Matching Your Profile",
+            "html": html,
+        }
+        
+        result = resend.Emails.send(params)
+        print(f"✅ Job digest sent to {to_email}: {result}")
+        return result
+    except Exception as e:
+        print(f"❌ Failed to send job digest to {to_email}: {e}")
+        return None
