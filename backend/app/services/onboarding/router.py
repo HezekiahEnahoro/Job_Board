@@ -88,7 +88,7 @@ async def upload_resume_onboarding(
         profile.experience = parsed.get("experience", [])
         profile.education = parsed.get("education", [])
         profile.summary = parsed.get("summary")
-        profile.resume_text = parsed.get("resume_text")
+        # profile.resume_text = parsed.get("resume_text")
     else:
         # Create new
         profile = UserProfile(
@@ -100,7 +100,7 @@ async def upload_resume_onboarding(
             experience=parsed.get("experience", []),
             education=parsed.get("education", []),
             summary=parsed.get("summary"),
-            resume_text=parsed.get("resume_text")
+            # resume_text=parsed.get("resume_text")
         )
         db.add(profile)
     
