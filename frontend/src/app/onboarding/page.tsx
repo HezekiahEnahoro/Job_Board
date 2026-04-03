@@ -20,12 +20,21 @@ const API = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
 
 type OnboardingStep = 1 | 2 | 3 | 4 | 5 | 6;
 
+type EducationItem = {
+  degree: string;
+  school: string;
+  location?: string;
+  graduation_date?: string;
+  gpa?: string;
+  achievements?: string[];
+};
+
 type Profile = {
   full_name: string;
   skills: string[];
   total_skills: number;
   experience_years: number;
-  education: any[];
+  education: EducationItem[];
 };
 
 export default function OnboardingPage() {

@@ -41,7 +41,7 @@ type GeneratedResume = {
   id: number;
   tailored_summary: string;
   highlighted_skills: string[];
-  reordered_experience: any[];
+  reordered_experience: unknown[];
   match_score: number;
   resume_html: string;
   ai_changes: {
@@ -127,9 +127,10 @@ export default function QuickApply({ job }: { job: Job }) {
       }
 
       toast.success("Resume & Cover Letter generated!");
-    } catch (err: any) {
-      setError(err.message);
-      toast.error(err.message);
+    } catch (err: unknown) {
+      const error = err as Error;
+      setError(error.message);
+      toast.error(error.message);
     } finally {
       setGenerating(false);
       setGeneratingCoverLetter(false);

@@ -23,6 +23,51 @@ import {
 
 const API = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
 
+type ExperienceItem = {
+  title: string;
+  company: string;
+  location?: string;
+  start_date: string;
+  end_date?: string;
+  current: boolean;
+  description?: string;
+  achievements?: string[];
+  technologies?: string[];
+};
+
+type EducationItem = {
+  degree: string;
+  school: string;
+  location?: string;
+  graduation_date?: string;
+  gpa?: string;
+  achievements?: string[];
+};
+
+type CertificationItem = {
+  name: string;
+  issuer: string;
+  date?: string;
+  expires?: string;
+  credential_url?: string;
+};
+
+type LanguageItem = {
+  language: string;
+  level: string;
+};
+
+type UserPreferences = {
+  job_types?: string[];
+  industries?: string[];
+  remote_only?: boolean;
+  willing_to_relocate?: boolean;
+  preferred_locations?: string[];
+  salary_min?: number;
+  salary_max?: number;
+  company_size?: string[];
+};
+
 type Profile = {
   id: number;
   full_name: string;
@@ -34,11 +79,11 @@ type Profile = {
   github_url: string;
   summary: string;
   skills: string[];
-  experience: any[];
-  education: any[];
-  certifications: any[];
-  languages: any[];
-  preferences: any;
+  experience: ExperienceItem[]; 
+  education: EducationItem[]; 
+  certifications: CertificationItem[]; 
+  languages: LanguageItem[]; 
+  preferences: UserPreferences; 
   resume_file_name: string;
 };
 
