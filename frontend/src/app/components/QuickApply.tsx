@@ -122,7 +122,7 @@ export default function QuickApply({ job }: { job: Job }) {
           duration: 5000,
         });
         setCoverLetterContent(
-          "Upgrade to Pro to generate AI cover letters!\n\nPro features:\n• Unlimited AI cover letters\n• Unlimited resume analyses\n• Priority support\n\nOnly $15/month",
+          "🔒 Upgrade to Pro to unlock AI Cover Letters!\n\n✨ Pro Features:\n• Unlimited AI cover letters\n• Unlimited resume analyses\n• Priority support\n• Early access to new features\n\nOnly $15/month\n\nClick 'Upgrade to Pro' below to unlock!"
         );
       }
 
@@ -374,14 +374,24 @@ export default function QuickApply({ job }: { job: Job }) {
                       placeholder="Cover letter will appear here..."
                     />
 
-                    <Button
-                      onClick={copyCoverLetter}
-                      variant="outline"
-                      size="sm"
-                      className="w-full mt-3 sm:mt-4 border-blue-500/20 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20">
-                      <Copy className="h-4 w-4 mr-2" />
-                      Copy Cover Letter
-                    </Button>
+                    {coverLetter ? (
+                      <Button
+                        onClick={copyCoverLetter}
+                        variant="outline"
+                        size="sm"
+                        className="w-full mt-3 sm:mt-4 border-blue-500/20 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20">
+                        <Copy className="h-4 w-4 mr-2" />
+                        Copy Cover Letter
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={() => router.push("/upgrade")}
+                        size="sm"
+                        className="w-full mt-3 sm:mt-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 font-bold">
+                        <Sparkles className="h-4 w-4 mr-2" />
+                        Upgrade to Pro - $15/month
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>

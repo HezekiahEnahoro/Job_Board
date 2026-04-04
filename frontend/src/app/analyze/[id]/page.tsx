@@ -42,6 +42,53 @@ export default function AnalysisReportPage() {
     loadAnalysis();
   }, [params.id]);
 
+  const downloadPDF = async (analysisId: number) => {
+    const token = getToken();
+    if (!token) {
+      toast.error("Please login first");
+      return;
+    }
+
+    try {
+      toast.info("Downloading PDF...");
+
+      const response = await fetch(
+        `${API}/ai/analysis/${analysisId}/download`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      if (!response.ok) {
+        if (response.status === 403) {
+          toast.error("You don't have permission to download this analysis");
+        } else if (response.status === 404) {
+          toast.error("Analysis not found");
+        } else {
+          const error = await response.json().catch(() => ({}));
+          toast.error(error.detail || "Failed to download PDF");
+        }
+        return;
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `resume_analysis_${analysisId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      toast.success("PDF downloaded!");
+    } catch (error) {
+      console.error("Download error:", error);
+      toast.error("Network error");
+    }
+  };
   const loadAnalysis = async () => {
     const token = getToken();
     if (!token) {
@@ -127,12 +174,7 @@ export default function AnalysisReportPage() {
             </div>
 
             <Button
-              onClick={() =>
-                window.open(
-                  `${API}/ai/analysis/${analysis.id}/download`,
-                  "_blank",
-                )
-              }
+              onClick={() => downloadPDF(analysis.id)}
               className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 shadow-lg shadow-blue-500/25">
               <Download className="h-4 w-4 mr-2" />
               Download PDF

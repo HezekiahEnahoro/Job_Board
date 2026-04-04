@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from app.core.db import get_db
 from app.services.auth.dependencies import get_current_user
@@ -10,12 +10,18 @@ from .models import GeneratedResume
 from .generator import generate_tailored_resume
 from .pdf_builder import build_resume_html
 from app.services.matching.scorer import calculate_match_score
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
 
 router = APIRouter(prefix="/resume-generator", tags=["resume-generator"])
+limiter = Limiter(key_func=get_remote_address)
 
 @router.post("/generate", response_model=GeneratedResumeOut)
+@limiter.limit("30/hour")
 def generate_resume_for_job(
     payload: GenerateResumeRequest,
+    request: Request, 
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):

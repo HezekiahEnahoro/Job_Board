@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from typing import List
 from app.core.db import get_db
@@ -15,8 +15,12 @@ from .schemas import (
     GeneratedCoverLetterOut
 )
 from .generator import generate_cover_letter_with_ai, fill_template_placeholders
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
 
 router = APIRouter(prefix="/cover-letter", tags=["cover-letter"])
+limiter = Limiter(key_func=get_remote_address)
 
 # ============= TEMPLATES =============
 
@@ -115,8 +119,10 @@ def delete_template(
 # ============= GENERATE =============
 
 @router.post("/generate", response_model=GeneratedCoverLetterOut)
+@limiter.limit("10/hour")
 def generate_cover_letter(
     payload: GenerateCoverLetterRequest,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):

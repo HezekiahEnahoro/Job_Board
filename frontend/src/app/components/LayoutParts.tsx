@@ -106,16 +106,7 @@ export function Navbar() {
                   <Sparkles className="h-4 w-4" />
                   AI Analyzer
                 </Link>
-                <Link
-                  href="/settings"
-                  className={`flex items-center gap-2 text-sm font-medium transition-colors ${
-                    isActive("/settings")
-                      ? "text-white"
-                      : "text-gray-400 hover:text-white"
-                  }`}>
-                  <SettingsIcon className="h-4 w-4" />
-                  Settings
-                </Link>
+
                 <Link
                   href="/analytics"
                   className={`flex items-center gap-2 text-sm font-medium transition-colors ${
@@ -125,6 +116,16 @@ export function Navbar() {
                   }`}>
                   <BarChart3 className="h-4 w-4" />
                   Analytics
+                </Link>
+                <Link
+                  href="/settings"
+                  className={`flex items-center gap-2 text-sm font-medium transition-colors ${
+                    isActive("/settings")
+                      ? "text-white"
+                      : "text-gray-400 hover:text-white"
+                  }`}>
+                  <SettingsIcon className="h-4 w-4" />
+                  Settings
                 </Link>
               </>
             ) : (
@@ -232,6 +233,13 @@ export function Navbar() {
                   onClick={() => setMobileMenuOpen(false)}>
                   <BarChart3 className="h-4 w-4 inline mr-2" />
                   Analytics
+                </Link>
+                <Link
+                  href="/settings"
+                  className="block px-4 py-2 text-sm font-medium text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition"
+                  onClick={() => setMobileMenuOpen(false)}>
+                  <SettingsIcon className="h-4 w-4 inline mr-2" />
+                  Settings
                 </Link>
                 <Link
                   href="/profile"

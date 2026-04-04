@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, status
+from fastapi import APIRouter, Depends, UploadFile, File, Form, Request, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func
 from app.core.db import get_db
@@ -10,11 +10,16 @@ from app.services.ai.analyzer import analyze_resume_match, generate_cover_letter
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime, timedelta, timezone
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 
+limiter = Limiter(key_func=get_remote_address)
+
 # CONFIGURABLE LIMITS
-FREE_ANALYSES_PER_MONTH = 5
+FREE_ANALYSES_PER_MONTH = 10
 PRO_ANALYSES_PER_MONTH = None  # None = unlimited
 
 class AnalysisResult(BaseModel):
@@ -75,8 +80,11 @@ def get_usage_stats(
         remaining=remaining
     )
 
+
 @router.post("/analyze-resume", response_model=AnalysisResult)
+@limiter.limit("10/hour")  # ✅ 10 analyses per hour per IP
 async def analyze_resume(
+    request: Request,
     file: UploadFile = File(...),
     job_id: int = Form(...),
     generate_cover: bool = Form(False),
@@ -90,6 +98,31 @@ async def analyze_resume(
     Upload resume and analyze against a job posting
     Supports both database jobs and manual job entry
     """
+
+    # ✅ ADD FILE VALIDATION HERE
+    MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
+    ALLOWED_TYPES = [
+        'application/pdf',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'  # .docx
+    ]
+    
+    # Check file type
+    if file.content_type not in ALLOWED_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail="Only PDF and DOCX files are allowed"
+        )
+    
+    # Check file size
+    file_content = await file.read()
+    if len(file_content) > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=400,
+            detail="File size must be less than 5MB"
+        )
+    
+    # Reset file pointer for later reading
+    await file.seek(0)
     
     # Check usage limits
     one_month_ago = datetime.now(timezone.utc) - timedelta(days=30)

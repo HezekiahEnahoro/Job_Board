@@ -1,5 +1,6 @@
 # app/main.py
-from fastapi import FastAPI, Depends, Query
+from fastapi import FastAPI, Depends, Query, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -23,6 +24,10 @@ from app.services.resume_generator.router import router as resume_generator_rout
 from app.services.cover_letter.router import router as cover_letter_router
 from app.services.onboarding.router import router as onboarding_router
 from app.services.interview_prep.router import router as interview_prep_router
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 
 
@@ -84,20 +89,37 @@ async def lifespan(app: FastAPI):
     if scheduler:
         scheduler.shutdown(wait=False)
 
-app = FastAPI(title="MyJobPhase API",
+# Create rate limiter
+limiter = Limiter(key_func=get_remote_address, default_limits=["200/hour"])
+
+# Create FastAPI app
+app = FastAPI(
+    title="MyJobPhase API",
     description="AI-powered job search platform API",
-    version="1.0.0", lifespan=lifespan)
+    version="1.0.0",
+    lifespan=lifespan
+)
 
 # CORS Configuration
 ALLOW_ORIGINS = os.getenv("ALLOW_ORIGINS", "http://localhost:3000").split(",")
 
+# Add rate limiter to app state
+app.state.limiter = limiter
+
+# Add rate limit exception handler
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOW_ORIGINS,  # Allow specific origins
+    allow_origins=ALLOW_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],  # Allow all methods
-    allow_headers=["*"],  # Allow all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
+
+# Add SlowAPI middleware (SEPARATE from CORS!)
+app.add_middleware(SlowAPIMiddleware)
 
 # Include routers
 app.include_router(auth_router)
@@ -112,6 +134,16 @@ app.include_router(cover_letter_router)
 app.include_router(onboarding_router)
 app.include_router(interview_prep_router)
 
+
+# @app.exception_handler(RateLimitExceeded)
+# async def custom_rate_limit_handler(request: Request, exc: RateLimitExceeded):
+#     return JSONResponse(
+#         status_code=429,
+#         content={
+#             "detail": "Too many requests. Please slow down and try again in a few minutes.",
+#             "retry_after": exc.detail  # Tells them when they can try again
+#         }
+#     )
 @app.get("/")
 def root():
     return {"message": "MyJobPhase API is running"}

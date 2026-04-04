@@ -1,5 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException,Request
 from sqlalchemy.orm import Session
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from typing import List
 
 from app.core.db import get_db
@@ -11,12 +13,15 @@ from .models import InterviewPrep
 from .schemas import InterviewPrepOut
 from .service import generate_interview_prep
 
+limiter = Limiter(key_func=get_remote_address)
+
 router = APIRouter(prefix="/interview-prep", tags=["interview-prep"])
 
 
 @router.post("/{job_id}", response_model=InterviewPrepOut)
 def create_interview_prep(
     job_id: int,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -77,8 +82,10 @@ def create_interview_prep(
 
 
 @router.get("/{job_id}", response_model=InterviewPrepOut)
+@limiter.limit("20/hour")  # ✅ 20 preps per hour per IP
 def get_interview_prep(
     job_id: int,
+    request: Request, 
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):

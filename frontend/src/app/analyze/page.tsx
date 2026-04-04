@@ -89,7 +89,55 @@ export default function AnalyzePage() {
     loadUsage();
   }, [router]);
   
-    const loadUsage = async () => {
+  const downloadPDF = async (analysisId: number) => {
+    const token = getToken();
+    if (!token) {
+      toast.error("Please login first");
+      return;
+    }
+
+    try {
+      toast.info("Downloading PDF...");
+
+      const response = await fetch(
+        `${API}/ai/analysis/${analysisId}/download`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      if (!response.ok) {
+        if (response.status === 403) {
+          toast.error("You don't have permission to download this analysis");
+        } else if (response.status === 404) {
+          toast.error("Analysis not found");
+        } else {
+          const error = await response.json().catch(() => ({}));
+          toast.error(error.detail || "Failed to download PDF");
+        }
+        return;
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `resume_analysis_${analysisId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      toast.success("PDF downloaded!");
+    } catch (error) {
+      console.error("Download error:", error);
+      toast.error("Network error");
+    }
+  };
+  
+  const loadUsage = async () => {
       const token = getToken();
       if (!token) return;
   
@@ -367,13 +415,7 @@ export default function AnalyzePage() {
           {/* Primary Actions Row */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Button
-              onClick={() => {
-                // Download PDF - we'll create this endpoint
-                window.open(
-                  `${API}/ai/analysis/${result.id}/download`,
-                  "_blank",
-                );
-              }}
+              onClick={() => downloadPDF(result.id)}
               className="h-14 text-base bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 shadow-lg shadow-blue-500/25">
               <svg
                 className="w-5 h-5 mr-2"
