@@ -19,7 +19,7 @@ router = APIRouter(prefix="/ai", tags=["ai"])
 limiter = Limiter(key_func=get_remote_address)
 
 # CONFIGURABLE LIMITS
-FREE_ANALYSES_PER_MONTH = 10
+FREE_ANALYSES_PER_MONTH = 3
 PRO_ANALYSES_PER_MONTH = None  # None = unlimited
 
 class AnalysisResult(BaseModel):
