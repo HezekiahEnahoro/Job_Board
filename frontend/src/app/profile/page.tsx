@@ -6,6 +6,14 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import {
   User as UserIcon,
@@ -16,10 +24,23 @@ import {
   Trash2,
   Save,
   Sparkles,
+  Bell,
+  Target,
+  MapPin,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
 
 const API = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
+
+type EmailPreferences = {
+  id: number;
+  enabled: boolean;
+  frequency: "daily" | "weekly" | "disabled";
+  min_match_score: number;
+  remote_only: boolean;
+  last_sent_at: string | null;
+};
 
 export default function ProfilePage() {
   const [user, setUser] = useState<User | null>(null);
@@ -27,6 +48,12 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const router = useRouter();
+
+  // Email preferences state
+  const [emailPreferences, setEmailPreferences] =
+    useState<EmailPreferences | null>(null);
+  const [loadingPreferences, setLoadingPreferences] = useState(true);
+  const [savingPreferences, setSavingPreferences] = useState(false);
 
   useEffect(() => {
     const token = getToken();
@@ -36,6 +63,7 @@ export default function ProfilePage() {
     }
 
     loadUser();
+    loadEmailPreferences();
   }, [router]);
 
   const loadUser = async () => {
@@ -47,7 +75,27 @@ export default function ProfilePage() {
     setLoading(false);
   };
 
-  const handleUpdate = async (e: React.FormEvent) => {
+  const loadEmailPreferences = async () => {
+    const token = getToken();
+    if (!token) return;
+
+    try {
+      const res = await fetch(`${API}/emails/preferences`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setEmailPreferences(data);
+      }
+    } catch (error) {
+      console.error("Failed to load email preferences");
+    } finally {
+      setLoadingPreferences(false);
+    }
+  };
+
+  const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     const token = getToken();
     if (!token) return;
@@ -73,6 +121,34 @@ export default function ProfilePage() {
       toast.error("Network error");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSaveEmailPreferences = async () => {
+    const token = getToken();
+    if (!token || !emailPreferences) return;
+
+    try {
+      setSavingPreferences(true);
+      const res = await fetch(`${API}/emails/preferences`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(emailPreferences),
+      });
+
+      if (res.ok) {
+        toast.success("Email preferences saved!");
+        loadEmailPreferences();
+      } else {
+        toast.error("Failed to save preferences");
+      }
+    } catch (error) {
+      toast.error("Network error");
+    } finally {
+      setSavingPreferences(false);
     }
   };
 
@@ -107,13 +183,8 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto max-w-7xl px-6 lg:px-8 py-8">
-        <div className="max-w-2xl mx-auto">
-          <div className="animate-pulse space-y-6">
-            <div className="h-12 bg-white/5 rounded-lg w-48"></div>
-            <div className="h-64 bg-white/5 rounded-2xl"></div>
-          </div>
-        </div>
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <Loader2 className="h-12 w-12 animate-spin text-blue-400" />
       </div>
     );
   }
@@ -121,27 +192,31 @@ export default function ProfilePage() {
   if (!user) return null;
 
   return (
-    <div className="container mx-auto max-w-7xl px-6 lg:px-8 py-8 space-y-8">
-      <div className="max-w-2xl mx-auto">
+    <div className="min-h-screen bg-black text-white py-12 px-6">
+      <div className="mx-auto max-w-4xl space-y-8">
         {/* Header */}
-        <div className="space-y-4 mb-8">
-          <div className="flex items-center gap-3">
+        <div className="mb-8">
+          <div className="flex items-center gap-3 mb-4">
             <div className="p-3 rounded-xl bg-gradient-to-br from-blue-600 to-purple-600">
               <UserIcon className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h1 className="text-4xl font-black tracking-tight">Profile</h1>
-              <p className="text-gray-400">Manage your account settings</p>
+              <h1 className="text-4xl font-black">Profile & Settings</h1>
+              <p className="text-gray-400">
+                Manage your account and preferences
+              </p>
             </div>
           </div>
         </div>
 
-        {/* Profile Card */}
-        <div className="group relative mb-8">
+        {/* Account Info Card */}
+        <div className="group relative">
           <div className="absolute -inset-px bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-3xl opacity-50 group-hover:opacity-75 blur transition"></div>
           <div className="relative rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl p-8">
-            <form onSubmit={handleUpdate} className="space-y-6">
-              {/* Account Status */}
+            <h2 className="text-2xl font-bold mb-6">Account Information</h2>
+
+            <form onSubmit={handleUpdateProfile} className="space-y-6">
+              {/* Email & Status */}
               <div className="flex items-center justify-between pb-6 border-b border-white/10">
                 <div className="flex items-center gap-3">
                   <div className="p-3 rounded-xl bg-white/5">
@@ -182,10 +257,7 @@ export default function ProfilePage() {
 
               {/* Full Name */}
               <div className="space-y-2">
-                <Label
-                  htmlFor="fullName"
-                  className="text-sm text-gray-400 flex items-center gap-2">
-                  <UserIcon className="h-4 w-4" />
+                <Label htmlFor="fullName" className="text-gray-400">
                   Full Name
                 </Label>
                 <Input
@@ -193,7 +265,7 @@ export default function ProfilePage() {
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="Your name"
-                  className="h-12 bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-blue-500/50"
+                  className="h-12 bg-white/5 border-white/10 text-white"
                 />
               </div>
 
@@ -202,35 +274,166 @@ export default function ProfilePage() {
                 disabled={saving}
                 className="w-full h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
                 {saving ? (
-                  <div className="flex items-center gap-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     Saving...
-                  </div>
+                  </>
                 ) : (
-                  <div className="flex items-center gap-2">
-                    <Save className="h-4 w-4" />
-                    Save Changes
-                  </div>
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Save Profile
+                  </>
                 )}
               </Button>
             </form>
           </div>
         </div>
 
-        {/* Upgrade Card (if not pro) */}
+        {/* Email Preferences Card */}
+        {!loadingPreferences && emailPreferences && (
+          <div className="group relative">
+            <div className="absolute -inset-px bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-3xl opacity-50 group-hover:opacity-75 blur transition"></div>
+            <div className="relative rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl p-8 space-y-6">
+              <h2 className="text-2xl font-bold">Email Alerts</h2>
+
+              {/* Enable Toggle */}
+              <div className="flex items-center justify-between p-6 rounded-2xl bg-white/5 border border-white/10">
+                <div className="flex items-start gap-4">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-green-600 to-emerald-600">
+                    <Bell className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold mb-1">
+                      Enable Email Alerts
+                    </h3>
+                    <p className="text-gray-400 text-sm">
+                      Get personalized job recommendations in your inbox
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  checked={emailPreferences.enabled}
+                  onCheckedChange={(checked) =>
+                    setEmailPreferences({
+                      ...emailPreferences,
+                      enabled: checked,
+                    })
+                  }
+                  className="data-[state=checked]:bg-green-600"
+                />
+              </div>
+
+              {emailPreferences.enabled && (
+                <>
+                  {/* Frequency */}
+                  <div className="space-y-3">
+                    <Label>Email Frequency</Label>
+                    <Select
+                      value={emailPreferences.frequency}
+                      onValueChange={(v: "daily" | "weekly" | "disabled") =>
+                        setEmailPreferences({
+                          ...emailPreferences,
+                          frequency: v,
+                        })
+                      }>
+                      <SelectTrigger className="bg-white/5 border-white/10 text-white h-12">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-gray-900 border-white/10">
+                        <SelectItem value="daily">Daily (9 AM)</SelectItem>
+                        <SelectItem value="weekly">
+                          Weekly (Mondays at 9 AM)
+                        </SelectItem>
+                        <SelectItem value="disabled">Disabled</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Min Match Score */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label>Minimum Match Score</Label>
+                      <span className="text-xl font-bold text-purple-400">
+                        {emailPreferences.min_match_score}%
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      step="10"
+                      value={emailPreferences.min_match_score}
+                      onChange={(e) =>
+                        setEmailPreferences({
+                          ...emailPreferences,
+                          min_match_score: Number(e.target.value),
+                        })
+                      }
+                      className="w-full h-2 bg-white/10 rounded-lg"
+                    />
+                  </div>
+
+                  {/* Remote Only */}
+                  <div className="flex items-center justify-between p-6 rounded-2xl bg-white/5 border border-white/10">
+                    <div className="flex items-start gap-4">
+                      <div className="p-3 rounded-xl bg-gradient-to-br from-cyan-600 to-blue-600">
+                        <MapPin className="h-6 w-6 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold mb-1">Remote Jobs Only</h3>
+                        <p className="text-gray-400 text-sm">
+                          Only include fully remote positions
+                        </p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={emailPreferences.remote_only}
+                      onCheckedChange={(checked) =>
+                        setEmailPreferences({
+                          ...emailPreferences,
+                          remote_only: checked,
+                        })
+                      }
+                      className="data-[state=checked]:bg-cyan-600"
+                    />
+                  </div>
+                </>
+              )}
+
+              <Button
+                onClick={handleSaveEmailPreferences}
+                disabled={savingPreferences}
+                className="w-full h-12 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
+                {savingPreferences ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Save Email Preferences
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Upgrade Card */}
         {!user.is_pro && (
-          <div className="group relative mb-8">
-            <div className="absolute -inset-px bg-gradient-to-r from-yellow-400 to-orange-500 rounded-3xl opacity-75 group-hover:opacity-100 blur-xl transition"></div>
-            <div className="relative rounded-3xl border border-yellow-500/30 bg-gradient-to-br from-yellow-950/30 to-orange-950/30 backdrop-blur-xl p-8">
+          <div className="group relative">
+            <div className="absolute -inset-px bg-gradient-to-r from-yellow-400 to-orange-500 rounded-3xl opacity-75 blur-xl transition"></div>
+            <div className="relative rounded-3xl border border-yellow-500/30 bg-gradient-to-br from-yellow-950/30 to-orange-950/30 p-8">
               <div className="flex items-start gap-4">
                 <div className="p-3 rounded-xl bg-gradient-to-br from-yellow-400 to-orange-500">
                   <Sparkles className="h-6 w-6 text-white" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-xl font-bold mb-2">Upgrade to Pro</h3>
+                  <h3 className="text-2xl font-bold mb-2">Upgrade to Pro</h3>
                   <p className="text-gray-400 mb-4">
-                    Unlock unlimited applications, AI analyses, and priority
-                    support for just $15/month
+                    Unlock unlimited AI cover letters, resume analyses, and
+                    priority support for just $15/month
                   </p>
                   <Link href="/upgrade">
                     <Button className="bg-white text-black hover:bg-white/90 font-bold">
@@ -245,8 +448,8 @@ export default function ProfilePage() {
 
         {/* Danger Zone */}
         <div className="group relative">
-          <div className="absolute -inset-px bg-gradient-to-r from-red-500/20 to-red-600/20 rounded-3xl opacity-50 blur transition"></div>
-          <div className="relative rounded-3xl border border-red-500/20 bg-red-950/10 backdrop-blur-xl p-8">
+          <div className="absolute -inset-px bg-gradient-to-r from-red-500/20 to-red-600/20 rounded-3xl blur transition"></div>
+          <div className="relative rounded-3xl border border-red-500/20 bg-red-950/10 p-8">
             <h3 className="text-xl font-bold text-red-400 mb-4">Danger Zone</h3>
 
             <div className="space-y-4">
@@ -261,7 +464,7 @@ export default function ProfilePage() {
               <Button
                 onClick={handleDeleteAccount}
                 variant="outline"
-                className="w-full h-12 border-red-500/20 bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:border-red-500/30">
+                className="w-full h-12 border-red-500/20 bg-red-500/10 text-red-400 hover:bg-red-500/20">
                 <Trash2 className="h-4 w-4 mr-2" />
                 Delete Account
               </Button>

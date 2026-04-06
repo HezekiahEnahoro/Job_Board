@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.orm import Session
 from app.core.db import get_db
 from .schemas import UserCreate, UserLogin, Token, UserOut
@@ -19,7 +19,11 @@ class UserUpdate(BaseModel):
 # ========== EXISTING ENDPOINTS ==========
 
 @router.post("/signup", response_model=UserOut, status_code=status.HTTP_201_CREATED)
-def signup(user: UserCreate, db: Session = Depends(get_db)):
+def signup(
+    user: UserCreate,
+    background_tasks: BackgroundTasks,  # ✅ Add this
+    db: Session = Depends(get_db)
+):
     """Register a new user"""
     existing_user = get_user_by_email(db, user.email)
     if existing_user:
@@ -30,12 +34,22 @@ def signup(user: UserCreate, db: Session = Depends(get_db)):
     
     db_user = create_user(db, user)
     
-    try:
-        send_welcome_email(db_user.email, db_user.full_name)
-    except Exception as e:
-        print(f"Warning: Failed to send welcome email: {e}")
+    # ✅ Send email in background (non-blocking)
+    background_tasks.add_task(
+        send_welcome_email_safe,
+        db_user.email,
+        db_user.full_name
+    )
     
-    return db_user
+    return db_user  # Returns immediately! ⚡
+
+# ✅ Add this helper function
+def send_welcome_email_safe(email: str, name: str):
+    """Safely send welcome email without blocking"""
+    try:
+        send_welcome_email(email, name)
+    except Exception as e:
+        print(f"Background task: Failed to send welcome email: {e}")
 
 @router.post("/login", response_model=Token)
 def login(credentials: UserLogin, db: Session = Depends(get_db)):
