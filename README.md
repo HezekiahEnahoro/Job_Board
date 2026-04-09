@@ -14,3 +14,12 @@ FastAPI, SQLAlchemy, Postgres, Docker, APScheduler
 ## Run
 docker compose up --build
 # Frontend: npm run dev
+
+
+## 🏗️ Data Engineering Pipeline
+
+MyJobPhase runs a production-grade data pipeline processing 1,900+ 
+worldwide remote jobs daily with Bronze/Silver/Gold lakehouse architecture 
+and Apache Airflow orchestration.
+
+[→ View Data Engineering Architecture & Pipeline Docs](docs/DATA_ENGINEERING.md)

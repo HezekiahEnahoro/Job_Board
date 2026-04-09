@@ -1,0 +1,5 @@
+# Airflow DAG dependencies
+python-dotenv
+sqlalchemy
+psycopg2-binary
+httpx

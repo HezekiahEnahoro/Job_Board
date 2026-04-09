@@ -12,7 +12,7 @@ from app.core import models
 from app.core.db import init_db, get_db, ensure_indexes, engine
 from app.core import crud, schemas
 from app.core import trends as trends_svc
-from app.ingest import run_ingest_once
+from app.orchestrator import run_ingest_once
 from app.services.auth.router import router as auth_router
 from app.services.applications.router import router as applications_router
 from app.services.email.router import router as email_router
@@ -214,3 +214,9 @@ def admin_status(db: Session = Depends(get_db)):
         "sources": {"greenhouse": gh, "lever": lever, "ashby": ashby},
         "counts": {"total": total, "last_7d": recent_7d}
     }
+
+
+@app.post("/internal/trigger-ingest")
+async def trigger_ingest():
+    asyncio.create_task(run_ingest_once())
+    return {"status": "started"}

@@ -1,6 +1,7 @@
 import os
 from typing import Generator
-from sqlalchemy import create_engine, text, Connection
+from sqlalchemy import create_engine, text
+from sqlalchemy.engine import Connection
 from sqlalchemy.orm import sessionmaker, declarative_base, Session
 
 # Get DATABASE_URL from environment
