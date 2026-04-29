@@ -24,14 +24,24 @@ async def _fetch_browse(max_jobs: int) -> List[Dict]:
     out: List[Dict] = []
     offset = 0
 
-    async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
+    # Match exact headers that work in debug endpoint
+    headers = {
+        "User-Agent": "Mozilla/5.0 (compatible; MyJobPhase/1.0)",
+        "Accept": "application/json",
+    }
+
+    async with httpx.AsyncClient(timeout=60, headers=headers) as client:
         while len(out) < max_jobs:
             try:
-                r = await client.get(BROWSE_API, params={"limit": PAGE_SIZE, "offset": offset})
+                r = await client.get(
+                    BROWSE_API,
+                    params={"limit": PAGE_SIZE, "offset": offset}
+                )
                 r.raise_for_status()
                 data = r.json()
             except Exception as e:
-                logger.error(f"[Himalayas] Browse failed (offset={offset}): {e}")
+                # Log type AND message — empty message hides the real error
+                logger.error(f"[Himalayas] Browse failed (offset={offset}): {type(e).__name__}: {e}")
                 break
 
             raw_jobs = data.get("jobs", [])
