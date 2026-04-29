@@ -131,7 +131,7 @@ function DashboardContent() {
       // Wait 1 second then force refresh user data
       setTimeout(async () => {
         const freshUser = await getCurrentUser();
-        console.log("🔄 Refreshed user after upgrade:", freshUser);
+
         setUser(freshUser);
         await Promise.all([loadApps(), loadStats()]);
         setLoading(false);
@@ -140,7 +140,7 @@ function DashboardContent() {
       // Normal load
       Promise.all([getCurrentUser(), loadApps(), loadStats()]).then(
         ([userData]) => {
-          console.log("👤 Dashboard loaded user:", userData);
+      
           setUser(userData);
           setLoading(false);
         },
@@ -432,14 +432,14 @@ function DashboardContent() {
           {filtered.map((app) => {
             const config =
               STATUS_CONFIG[app.status as keyof typeof STATUS_CONFIG];
-            console.log("🔍 App:", app.id, {
-              applied_via: app.applied_via,
-              resume_id: app.resume_id,
-              cover_letter_id: app.cover_letter_id,
-              shouldShowQuickApply:
-                app.applied_via === "quick_apply" &&
-                (app.resume_id || app.cover_letter_id),
-            });
+            // console.log("🔍 App:", app.id, {
+            //   applied_via: app.applied_via,
+            //   resume_id: app.resume_id,
+            //   cover_letter_id: app.cover_letter_id,
+            //   shouldShowQuickApply:
+            //     app.applied_via === "quick_apply" &&
+            //     (app.resume_id || app.cover_letter_id),
+            // });
             return (
               <div key={app.id} className="group relative">
                 <div

@@ -588,7 +588,6 @@ export default function JobsTable() {
               type="button"
               onClick={() => {
                 const newOffset = Math.max(0, offset - 25);
-                console.log("Previous:", offset, "→", newOffset);
                 setOffset(newOffset);
               }}
               style={{
@@ -636,7 +635,6 @@ export default function JobsTable() {
               onClick={() => {
                 const hasMore = offset + 25 < (page?.total || 0);
                 const nextOffset = offset + 25;
-                console.log("Next:", offset, "→", nextOffset);
 
                 if (hasMore) {
                   setOffset(nextOffset);
