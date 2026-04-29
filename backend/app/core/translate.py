@@ -73,29 +73,29 @@ def translate_to_english(text: str, max_chars: int = 2000) -> str:
     if is_english(text):
         return text
 
+    logger.info(f"[Translate] Translating {len(text)} chars...")
     truncated = text[:max_chars]
 
-    for attempt in range(3):  # retry up to 3 times
-        try:
-            response = _get_client().chat.completions.create(
-                model="llama-3.1-8b-instant",
-                messages=[
-                    {"role": "system", "content": "You are a professional translator. Translate the following job description to English. Preserve formatting. Output ONLY the translated text."},
-                    {"role": "user", "content": truncated},
-                ],
-                temperature=0.1,
-                max_tokens=1000,
-            )
-            return response.choices[0].message.content.strip()
+    try:
+        response = _get_client().chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "Translate the following job description to English. Output ONLY the translated text.",
+                },
+                {"role": "user", "content": truncated},
+            ],
+            temperature=0.1,
+            max_tokens=1000,
+        )
+        return response.choices[0].message.content.strip()
 
-        except Exception as e:
-            if "429" in str(e) and attempt < 2:
-                time.sleep(2)  # wait 2 seconds then retry
-                continue
-            logger.warning(f"[Translate] Failed — keeping original: {e}")
-            return text
-
-    return text
+    except Exception as e:
+        # Fail fast — never sleep, never retry
+        # Blocking the event loop kills login/signup
+        logger.warning(f"[Translate] Failed — keeping original: {e}")
+        return text
 
 def translate_job(job: dict) -> dict:
     """
