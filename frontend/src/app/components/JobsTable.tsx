@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import ViewJob from "./ViewJob";
+// import ViewJob from "./ViewJob";
 import { getErrorMessage } from "@/lib/getErrorMessage";
 import { getToken } from "@/lib/auth";
 import { toast } from "sonner";
@@ -545,7 +545,7 @@ export default function JobsTable() {
 
                       {/* Actions */}
                       <div className="flex flex-row gap-2 flex-wrap sm:flex-nowrap">
-                        <ViewJob job={job} />
+                        {/* <ViewJob job={job} /> */}
                         {hasProfile && job.apply_url && (
                           <>
                             <QuickApply job={job} />

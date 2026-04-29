@@ -14,6 +14,7 @@ from .ingest.remoteok import fetch_remoteok_jobs
 from .ingest.landingjobs import fetch_landingjobs
 from .ingest.europeremotely import fetch_europeremotely_jobs
 from .ingest.remoteafrica import fetch_remoteafrica_jobs
+from .ingest.himalayas import fetch_himalayas_jobs
 from .ingest.storage import BronzeStorage, DeadLetterQueue
 
 load_dotenv()
@@ -72,7 +73,12 @@ def filter_worldwide_jobs(jobs: list[dict], source_name: str) -> list[dict]:
 
 
 def _bulk_upsert(db: Session, jobs: list[dict]):
+    from app.core.translate import translate_to_english, is_english  # ← add
     for jd in jobs:
+        # Translate non-English descriptions before writing to DB 
+        desc = jd.get("description_text", "")                     
+        if desc and not is_english(desc):                          
+            jd["description_text"] = translate_to_english(desc)   
         payload = schemas.JobCreate(**jd)
         crud.upsert_job(db, payload)
 
@@ -182,6 +188,7 @@ async def run_ingest_once():
     enable_landingjobs = os.getenv("ENABLE_LANDINGJOBS", "true").lower() == "true"
     enable_europeremotely = os.getenv("ENABLE_EUROPEREMOTELY", "true").lower() == "true"
     enable_remoteafrica = os.getenv("ENABLE_REMOTEAFRICA", "true").lower() == "true"
+    enable_himalayas = os.getenv("ENABLE_HIMALAYAS", "true").lower() == "true"
 
     tasks = []
     
@@ -195,13 +202,13 @@ async def run_ingest_once():
     
     # Remote job board APIs
     if enable_remotive:
-        tasks.append(ingest_api_source(fetch_remotive_jobs, "Remotive", 48))
+        tasks.append(ingest_api_source(fetch_remotive_jobs, "Remotive", 168))
     
     if enable_arbeitnow:
         tasks.append(ingest_api_source(fetch_arbeitnow_jobs, "Arbeitnow"))
 
     if enable_remoteok:
-        tasks.append(ingest_api_source(fetch_remoteok_jobs, "RemoteOK", 72))
+        tasks.append(ingest_api_source(fetch_remoteok_jobs, "RemoteOK", 168))
     
     if enable_landingjobs:
         tasks.append(ingest_api_source(fetch_landingjobs, "LandingJobs"))
@@ -211,6 +218,9 @@ async def run_ingest_once():
     
     if enable_remoteafrica:
         tasks.append(ingest_api_source(fetch_remoteafrica_jobs, "RemoteAfrica"))
+
+    if enable_himalayas:
+        tasks.append(ingest_api_source(fetch_himalayas_jobs, "Himalayas"))
     
     if tasks:
         await asyncio.gather(*tasks)

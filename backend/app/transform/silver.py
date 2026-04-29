@@ -21,6 +21,7 @@ import pandas as pd
 from pathlib import Path
 from datetime import datetime
 from typing import List, Dict, Any
+from app.core.translate import translate_to_english, is_english
 
 
 class SilverLayer:
@@ -54,8 +55,9 @@ class SilverLayer:
             df['salary'] = pd.to_numeric(df['salary'], errors='coerce').fillna(0)
         if 'location' in df.columns:
             df['location'] = df['location'].fillna('Remote')
-        if 'description' in df.columns:
-            df['description'] = df['description'].fillna('')
+        for desc_col in ['description', 'description_text']:
+            if desc_col in df.columns:
+                df[desc_col] = df[desc_col].fillna('')
 
         # Parse dates
         # WHY: String dates can't be filtered by range (WHERE posted_at > '2025-01-01')
@@ -68,6 +70,21 @@ class SilverLayer:
         for text_col in ['title', 'company', 'location']:
             if text_col in df.columns:
                 df[text_col] = df[text_col].astype(str).str.strip()
+
+        # ── Translate non-English descriptions 
+        # WHY: Jobs from European/African sources (EuropeRemotely, LandingJobs,
+        # Arbeitnow, Himalayas) often have descriptions in German, French, Portuguese etc. Translate only what needs it — English jobs are skipped by fast keyword heuristic (no API call).
+
+        if 'description_text' in df.columns:
+            mask = ~df['description_text'].fillna('').apply(is_english)
+            non_english_count = mask.sum()
+            if non_english_count > 0:
+                print(f"  🌍 Translating {non_english_count} non-English descriptions...")
+                df.loc[mask, 'description_text'] = (
+                    df.loc[mask, 'description_text']
+                    .apply(translate_to_english)
+                )
+                print(f"  ✅ Translation complete")
 
         # Deduplicate
         # WHY: Greenhouse + Lever might list same job. Duplicates inflate metrics.

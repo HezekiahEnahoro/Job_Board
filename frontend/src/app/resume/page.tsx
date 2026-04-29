@@ -79,11 +79,11 @@ type Profile = {
   github_url: string;
   summary: string;
   skills: string[];
-  experience: ExperienceItem[]; 
-  education: EducationItem[]; 
-  certifications: CertificationItem[]; 
-  languages: LanguageItem[]; 
-  preferences: UserPreferences; 
+  experience: ExperienceItem[];
+  education: EducationItem[];
+  certifications: CertificationItem[];
+  languages: LanguageItem[];
+  preferences: UserPreferences;
   resume_file_name: string;
 };
 
@@ -128,8 +128,11 @@ export default function ResumePage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.name.toLowerCase().endsWith(".pdf")) {
-      toast.error("Only PDF files are supported");
+    if (
+      !file.name.toLowerCase().endsWith(".pdf") &&
+      !file.name.toLowerCase().endsWith(".docx")
+    ) {
+      toast.error("Please upload a PDF or Word document (.pdf or .docx)");
       return;
     }
 
@@ -177,16 +180,19 @@ export default function ResumePage() {
             <div className="inline-flex p-6 rounded-3xl bg-gradient-to-br from-purple-600/20 to-pink-600/20 mb-8">
               <Upload className="h-16 w-16 text-purple-400" />
             </div>
-            <h1 className="text-4xl font-black mb-4">Create Your Job Profile</h1>
+            <h1 className="text-4xl font-black mb-4">
+              Create Your Job Profile
+            </h1>
             <p className="text-xl text-gray-400 mb-8">
-              Upload your resume and let AI extract your experience, skills, and education automatically.
-              This powers our job matching and quick apply features.
+              Upload your resume and let AI extract your experience, skills, and
+              education automatically. This powers our job matching and quick
+              apply features.
             </p>
 
             <div className="relative">
               <input
                 type="file"
-                accept=".pdf"
+                accept=".pdf,.docx"
                 onChange={handleResumeUpload}
                 className="hidden"
                 id="resume-upload"
@@ -263,7 +269,7 @@ export default function ResumePage() {
           <div className="relative">
             <input
               type="file"
-              accept=".pdf"
+              accept=".pdf,.docx"
               onChange={handleResumeUpload}
               className="hidden"
               id="resume-reupload"

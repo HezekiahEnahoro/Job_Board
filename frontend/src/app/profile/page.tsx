@@ -89,7 +89,7 @@ export default function ProfilePage() {
         setEmailPreferences(data);
       }
     } catch (error) {
-      console.error("Failed to load email preferences");
+      console.error("Failed to load email preferences", error);
     } finally {
       setLoadingPreferences(false);
     }

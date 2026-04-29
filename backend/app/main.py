@@ -1,10 +1,10 @@
 # app/main.py
-from fastapi import FastAPI, Depends, Query, Request
+from fastapi import FastAPI, Depends, Query, Request, BackgroundTasks
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-import os, asyncio
+import os, asyncio, logging
 from sqlalchemy import select, func
 from contextlib import asynccontextmanager
 
@@ -29,87 +29,96 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
-
-
+logger = logging.getLogger(__name__)
 
 scheduler: AsyncIOScheduler | None = None
 
+
+async def _deferred_ingest(delay_seconds: int = 15):
+    """
+    FIX: Don't run ingest immediately on startup.
+    Waiting 15s lets the app fully initialize (DB pool warm,
+    all routers registered) before hammering the DB with bulk inserts.
+    Ingest running at t=0 was competing with every login/signup
+    query during the critical first-use window.
+    """
+    await asyncio.sleep(delay_seconds)
+    logger.info("🔄 Starting deferred ingest...")
+    await run_ingest_once()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
-    print("🚀 Starting JobBoard API...")
+    # ── Startup ──────────────────────────────────────────────────────
+    logger.info("🚀 Starting MyJobPhase API...")
     init_db()
 
-    # Create performance indexes
     with engine.connect() as conn:
         ensure_indexes(conn)
-        print("📊 Database indexes created")
+        logger.info("📊 Database indexes ready")
 
-    # kick off one ingestion ASAP on the running event loop
-    asyncio.create_task(run_ingest_once())
+    # FIX: deferred ingest — app is fully ready before scraping starts.
+    # Previously this fired at t=0, competing with login/signup queries.
+    asyncio.create_task(_deferred_ingest(delay_seconds=15))
 
-    # schedule recurring ingestions (every 12 hours)
     global scheduler
     scheduler = AsyncIOScheduler()
-    # With AsyncIOScheduler you can schedule coroutine functions directly:
-    scheduler.add_job(run_ingest_once, trigger="interval", hours=6)
+
+    # Recurring ingest — every 12h is enough for a job board.
+    # Was 6h — more frequent = more DB contention during active hours.
+    scheduler.add_job(run_ingest_once, trigger="interval", hours=12)
 
     # Follow-up reminders (daily at 9 AM)
     from app.services.email.tasks import check_followup_reminders
     from app.core.db import SessionLocal
-    
+
     def run_followup_check():
         db = SessionLocal()
         try:
             check_followup_reminders(db)
         finally:
             db.close()
-    
+
     scheduler.add_job(run_followup_check, "cron", hour=9, minute=0)
-    
+
     # Weekly digest (Sundays at 10 AM)
     from app.services.email.tasks import send_weekly_digests
-    
+
     def run_weekly_digest():
         db = SessionLocal()
         try:
             send_weekly_digests(db)
         finally:
             db.close()
-    
+
     scheduler.add_job(run_weekly_digest, "cron", day_of_week="sun", hour=10, minute=0)
-    
     scheduler.start()
-    print("✅ Scheduler started with email tasks")
-    
-    yield  # App runs here
-    
-    # Shutdown
-    print("🛑 Shutting down...")
+    logger.info("✅ Scheduler started")
+
+    yield  # ── App running ──────────────────────────────────────────
+
+    # ── Shutdown ─────────────────────────────────────────────────────
+    logger.info("🛑 Shutting down...")
     if scheduler:
         scheduler.shutdown(wait=False)
 
-# Create rate limiter
+
+# ── Rate limiter ──────────────────────────────────────────────────────
 limiter = Limiter(key_func=get_remote_address, default_limits=["200/hour"])
 
-# Create FastAPI app
+# ── App ───────────────────────────────────────────────────────────────
 app = FastAPI(
     title="MyJobPhase API",
     description="AI-powered job search platform API",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
-# CORS Configuration
 ALLOW_ORIGINS = os.getenv("ALLOW_ORIGINS", "http://localhost:3000").split(",")
 
-# Add rate limiter to app state
 app.state.limiter = limiter
-
-# Add rate limit exception handler
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOW_ORIGINS,
@@ -117,11 +126,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Add SlowAPI middleware (SEPARATE from CORS!)
 app.add_middleware(SlowAPIMiddleware)
 
-# Include routers
+# ── Routers ───────────────────────────────────────────────────────────
 app.include_router(auth_router)
 app.include_router(applications_router)
 app.include_router(email_router)
@@ -129,32 +136,28 @@ app.include_router(ai_router)
 app.include_router(stripe_router)
 app.include_router(profile_router)
 app.include_router(matching_router)
-app.include_router(resume_generator_router) 
+app.include_router(resume_generator_router)
 app.include_router(cover_letter_router)
 app.include_router(onboarding_router)
 app.include_router(interview_prep_router)
 
 
-# @app.exception_handler(RateLimitExceeded)
-# async def custom_rate_limit_handler(request: Request, exc: RateLimitExceeded):
-#     return JSONResponse(
-#         status_code=429,
-#         content={
-#             "detail": "Too many requests. Please slow down and try again in a few minutes.",
-#             "retry_after": exc.detail  # Tells them when they can try again
-#         }
-#     )
+# ── Core endpoints ────────────────────────────────────────────────────
+
 @app.get("/")
 def root():
     return {"message": "MyJobPhase API is running"}
+
 
 @app.get("/health")
 def health():
     return {"status": "ok"}
 
+
 @app.post("/jobs", response_model=schemas.JobOut)
 def create_job(payload: schemas.JobCreate, db: Session = Depends(get_db)):
     return crud.upsert_job(db, payload)
+
 
 @app.get("/jobs", response_model=list[schemas.JobOut])
 def list_jobs(
@@ -162,17 +165,10 @@ def list_jobs(
     days: int = Query(30, ge=1, le=365),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     return crud.list_jobs(db, q=q, days=days, limit=limit, offset=offset)
 
-@app.get("/trends/skills")
-def trends_skills(days: int = Query(90, ge=7, le=365), top_k: int = Query(15, ge=1, le=50), db: Session = Depends(get_db)):
-    return trends_svc.top_skills(db, days=days, top_k=top_k)
-
-@app.get("/trends/remote_ratio")
-def trends_remote_ratio(days: int = Query(90, ge=7, le=365), db: Session = Depends(get_db)):
-    return trends_svc.remote_ratio(db, days=days)
 
 @app.get("/jobs/page", response_model=schemas.JobsPage)
 def list_jobs_page(
@@ -183,17 +179,36 @@ def list_jobs_page(
     skill: str | None = Query(None, description="filter by a skill keyword"),
     location: str | None = Query(None, description="substring match, e.g. 'london' or 'remote'"),
     remote: bool | None = Query(None, description="true/false"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    return crud.list_jobs_paginated(db, q=q, days=days, limit=limit, offset=offset, skill=skill, location=location, remote=remote)
+    return crud.list_jobs_paginated(
+        db, q=q, days=days, limit=limit, offset=offset,
+        skill=skill, location=location, remote=remote,
+    )
+
+
+@app.get("/trends/skills")
+def trends_skills(
+    days: int = Query(90, ge=7, le=365),
+    top_k: int = Query(15, ge=1, le=50),
+    db: Session = Depends(get_db),
+):
+    return trends_svc.top_skills(db, days=days, top_k=top_k)
+
+
+@app.get("/trends/remote_ratio")
+def trends_remote_ratio(days: int = Query(90, ge=7, le=365), db: Session = Depends(get_db)):
+    return trends_svc.remote_ratio(db, days=days)
+
 
 @app.get("/trends/company_activity")
 def trends_company_activity(
     days: int = Query(90, ge=7, le=365),
     top_k: int = Query(15, ge=1, le=100),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     return trends_svc.company_activity(db, days=days, top_k=top_k)
+
 
 @app.get("/admin/status")
 def admin_status(db: Session = Depends(get_db)):
@@ -203,7 +218,6 @@ def admin_status(db: Session = Depends(get_db)):
 
     total = db.scalar(select(func.count()).select_from(models.Job)) or 0
 
-    # Python-side cutoff for portability
     from datetime import datetime, timedelta, timezone
     cutoff = datetime.now(timezone.utc) - timedelta(days=7)
     recent_7d = db.scalar(
@@ -212,7 +226,7 @@ def admin_status(db: Session = Depends(get_db)):
 
     return {
         "sources": {"greenhouse": gh, "lever": lever, "ashby": ashby},
-        "counts": {"total": total, "last_7d": recent_7d}
+        "counts": {"total": total, "last_7d": recent_7d},
     }
 
 

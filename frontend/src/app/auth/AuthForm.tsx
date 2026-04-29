@@ -7,22 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { login, signup } from "@/lib/auth";
 import { toast } from "sonner";
-import {
-  Mail,
-  Lock,
-  User,
-  ArrowRight,
-  CheckCircle2,
-  Zap,
-} from "lucide-react";
+import { Mail, Lock, User, ArrowRight, CheckCircle2, Zap } from "lucide-react";
 import Link from "next/link";
 
 export default function AuthForm() {
   const searchParams = useSearchParams();
-  
-  // Check URL parameter for mode
-  const initialMode = searchParams.get("mode") === "signup" ? "signup" : "login";
-  
+  const initialMode =
+    searchParams.get("mode") === "signup" ? "signup" : "login";
+
   const [mode, setMode] = useState<"login" | "signup">(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -31,14 +23,10 @@ export default function AuthForm() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  // Update mode when URL changes
   useEffect(() => {
     const urlMode = searchParams.get("mode");
-    if (urlMode === "signup") {
-      setMode("signup");
-    } else if (urlMode === "login") {
-      setMode("login");
-    }
+    if (urlMode === "signup") setMode("signup");
+    else if (urlMode === "login") setMode("login");
   }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -48,12 +36,23 @@ export default function AuthForm() {
 
     try {
       if (mode === "signup") {
+        // FIX: signup() now handles everything internally —
+        // stores token, emits auth event. No login() call after.
+        // Previous code was: signup() → login() → login() (3 API calls).
+        // Now it's just: signup() — 1 or 2 calls depending on backend.
         await signup(email, password, fullName);
-        toast.success("Account created!");
+        toast.success("Account created! Setting up your profile…");
+      } else {
+        // FIX: was calling login() even after signup() already logged in.
+        // Now login-only path is explicit.
+        await login(email, password);
+        toast.success("Welcome back!");
       }
-      await login(email, password);
+
+      // Both paths land here — redirect to dashboard.
+      // middleware.ts handles the cookie-based auth check so the
+      // landing page redirect issue is also fixed.
       router.push("/dashboard");
-      toast.success("Welcome back!");
     } catch (err: unknown) {
       const error = err as Error;
       setError(error.message);
@@ -161,7 +160,7 @@ export default function AuthForm() {
                   {loading ? (
                     <div className="flex items-center gap-2">
                       <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                      Processing...
+                      {mode === "signup" ? "Creating account…" : "Signing in…"}
                     </div>
                   ) : (
                     <div className="flex items-center gap-2">
@@ -190,7 +189,6 @@ export default function AuthForm() {
                     const newMode = mode === "login" ? "signup" : "login";
                     setMode(newMode);
                     setError("");
-                    // Update URL without page reload
                     router.push(`/auth?mode=${newMode}`, { scroll: false });
                   }}
                   className="w-full text-center text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors">
@@ -200,7 +198,6 @@ export default function AuthForm() {
                 </button>
               </form>
 
-              {/* Features (only show on signup) */}
               {mode === "signup" && (
                 <div className="mt-8 pt-8 border-t border-white/10 space-y-3">
                   <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-4">
@@ -222,7 +219,6 @@ export default function AuthForm() {
             </div>
           </div>
 
-          {/* Back to home */}
           <div className="mt-6 text-center">
             <Link
               href="/"
