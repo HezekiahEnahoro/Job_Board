@@ -141,7 +141,7 @@ export async function getCurrentUser(forceRefresh = false): Promise<User | null>
       headers: { Authorization: `Bearer ${token}` },
       // Remove no-cache headers — they were causing revalidation on
       // every single call and adding latency. Cache at the fetch layer.
-      next: { revalidate: 30 }, // Next.js fetch cache: refresh every 30s
+      // next: { revalidate: 30 }, // Next.js fetch cache: refresh every 30s
     });
 
     if (!res.ok) {

@@ -9,6 +9,7 @@ is not already English, so English jobs have zero latency impact.
 import os
 import logging
 from groq import Groq
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -69,41 +70,32 @@ def translate_to_english(text: str, max_chars: int = 2000) -> str:
     """
     if not text or not text.strip():
         return text
-
     if is_english(text):
         return text
 
-    logger.info(f"[Translate] Non-English text detected ({len(text)} chars) — translating...")
-
     truncated = text[:max_chars]
 
-    try:
-        response = _get_client().chat.completions.create(
-            model="llama-3.1-8b-instant",
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You are a professional translator. "
-                        "Translate the following job description to English. "
-                        "Preserve formatting, bullet points, and structure. "
-                        "Output ONLY the translated text — no explanations, no preamble."
-                    ),
-                },
-                {"role": "user", "content": truncated},
-            ],
-            temperature=0.1,
-            max_tokens=1000,
-        )
-        translated = response.choices[0].message.content.strip()
-        logger.info(f"[Translate] ✅ Translated {len(text)} chars → {len(translated)} chars")
-        return translated
+    for attempt in range(3):  # retry up to 3 times
+        try:
+            response = _get_client().chat.completions.create(
+                model="llama-3.1-8b-instant",
+                messages=[
+                    {"role": "system", "content": "You are a professional translator. Translate the following job description to English. Preserve formatting. Output ONLY the translated text."},
+                    {"role": "user", "content": truncated},
+                ],
+                temperature=0.1,
+                max_tokens=1000,
+            )
+            return response.choices[0].message.content.strip()
 
-    except Exception as e:
-        # Never crash ingest because of translation failure
-        logger.warning(f"[Translate] Failed — keeping original: {e}")
-        return text
+        except Exception as e:
+            if "429" in str(e) and attempt < 2:
+                time.sleep(2)  # wait 2 seconds then retry
+                continue
+            logger.warning(f"[Translate] Failed — keeping original: {e}")
+            return text
 
+    return text
 
 def translate_job(job: dict) -> dict:
     """

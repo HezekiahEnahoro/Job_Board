@@ -236,3 +236,20 @@ def admin_status(db: Session = Depends(get_db)):
 async def trigger_ingest():
     asyncio.create_task(run_ingest_once())
     return {"status": "started"}
+
+@app.get("/debug/himalayas")
+async def debug_himalayas():
+    import httpx
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            r = await client.get(
+                "https://himalayas.app/jobs/api",
+                params={"limit": 2},
+                headers={"User-Agent": "Mozilla/5.0 (compatible; MyJobPhase/1.0)"}
+            )
+            return {
+                "status_code": r.status_code,
+                "response": r.json() if r.status_code == 200 else r.text[:500]
+            }
+    except Exception as e:
+        return {"error": str(e)}
