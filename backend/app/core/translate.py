@@ -55,7 +55,7 @@ def is_english(text: str) -> bool:
     return True
 
 
-def translate_to_english(text: str, max_chars: int = 8000) -> str:
+def translate_to_english(text: str, max_chars: int = 2000) -> str:
     """
     Translate text to English using Groq (llama-3.3-70b-versatile).
     Returns original text if:
@@ -79,7 +79,7 @@ def translate_to_english(text: str, max_chars: int = 8000) -> str:
 
     try:
         response = _get_client().chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant",
             messages=[
                 {
                     "role": "system",
@@ -93,7 +93,7 @@ def translate_to_english(text: str, max_chars: int = 8000) -> str:
                 {"role": "user", "content": truncated},
             ],
             temperature=0.1,
-            max_tokens=4000,
+            max_tokens=1000,
         )
         translated = response.choices[0].message.content.strip()
         logger.info(f"[Translate] ✅ Translated {len(text)} chars → {len(translated)} chars")

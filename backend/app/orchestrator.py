@@ -1,7 +1,9 @@
 import os
 from dotenv import load_dotenv
 import asyncio
+from sqlalchemy import func, and_
 from sqlalchemy.orm import Session
+from .core.models import Job
 from .core.db import SessionLocal
 from .core import crud, schemas
 from .core.location_filter import is_worldwide_remote, clean_location
@@ -73,12 +75,11 @@ def filter_worldwide_jobs(jobs: list[dict], source_name: str) -> list[dict]:
 
 
 def _bulk_upsert(db: Session, jobs: list[dict]):
-    from app.core.translate import translate_to_english, is_english  # ← add
+    from app.core.translate import translate_to_english, is_english
     for jd in jobs:
-        # Translate non-English descriptions before writing to DB 
-        desc = jd.get("description_text", "")                     
-        if desc and not is_english(desc):                          
-            jd["description_text"] = translate_to_english(desc)   
+        desc = jd.get("description_text", "")
+        if desc and not is_english(desc):
+            jd["description_text"] = translate_to_english(desc)
         payload = schemas.JobCreate(**jd)
         crud.upsert_job(db, payload)
 

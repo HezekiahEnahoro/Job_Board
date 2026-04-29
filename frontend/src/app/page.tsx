@@ -18,19 +18,36 @@ import {
   BarChart3,
   Upload,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+
+const API = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
 
 export default function LandingPage() {
   const [hoveredFeature, setHoveredFeature] = useState<number | null>(null);
+  const [jobCount, setJobCount] = useState<string>("3,400+");
+
+  // Fetch real job count from API
+  useEffect(() => {
+    fetch(`${API}/jobs/page?limit=1&days=365`)
+      .then((r) => r.json())
+      .then((data) => {
+        const total = data?.total;
+        if (total && total > 0) {
+          // Format: 3,412 → "3,400+"
+          const rounded = Math.floor(total / 100) * 100;
+          setJobCount(`${rounded.toLocaleString()}+`);
+        }
+      })
+      .catch(() => {}); // Silently fail — default stays "3,400+"
+  }, []);
 
   return (
     <div className="relative min-h-screen bg-black text-white overflow-hidden">
-      {/* Enhanced Mesh Gradient Background */}
+      {/* Background */}
       <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,rgba(59,130,246,0.15),transparent_50%),radial-gradient(ellipse_at_bottom,rgba(168,85,247,0.15),transparent_50%)]">
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiMyMTIxMjEiIGZpbGwtb3BhY2l0eT0iMC40Ij48cGF0aCBkPSJNMzYgMzRjMC0yLjIxIDEuNzktNCAzLjk5LTRTNDQgMzEuNzkgNDQgMzRzLTEuNzkgNC0zLjk5IDRTMzYgMzYuMjEgMzYgMzR6bTAtMjBjMC0yLjIxIDEuNzktNCAzLjk5LTRTNDQgMTEuNzkgNDQgMTRzLTEuNzkgNC0zLjk5IDRTMzYgMTYuMjEgMzYgMTR6TTIwIDM0YzAtMi4yMSAxLjc5LTQgMy45OS00UzI4IDMxLjc5IDI4IDM0cy0xLjc5IDQtMy45OSA0UzIwIDM2LjIxIDIwIDM0em0wLTIwYzAtMi4yMSAxLjc5LTQgMy45OS00UzI4IDExLjc5IDI4IDE0cy0xLjc5IDQtMy45OSA0UzIwIDE2LjIxIDIwIDE0eiIvPjwvZz48L2c+PC9zdmc+')] opacity-30"></div>
       </div>
 
-      {/* Larger, More Visible Animated Gradient Orbs */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-48 -left-48 w-[600px] h-[600px] bg-blue-500/30 rounded-full mix-blend-screen filter blur-[120px] animate-float"></div>
         <div className="absolute -top-32 -right-32 w-[500px] h-[500px] bg-purple-500/30 rounded-full mix-blend-screen filter blur-[100px] animate-float-delayed"></div>
@@ -38,13 +55,11 @@ export default function LandingPage() {
         <div className="absolute top-1/2 right-1/4 w-[400px] h-[400px] bg-pink-500/20 rounded-full mix-blend-screen filter blur-[90px] animate-float"></div>
       </div>
 
-      {/* Content */}
       <div className="relative z-10">
-        {/* Hero Section */}
+        {/* Hero */}
         <section className="relative min-h-[90vh] flex items-center px-6 lg:px-8 py-20">
           <div className="mx-auto max-w-7xl w-full">
             <div className="text-center space-y-12">
-              {/* Badge */}
               <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-white/5 border border-white/10 backdrop-blur-xl hover:border-white/20 transition-all group cursor-pointer">
                 <div className="flex items-center gap-2">
                   <Sparkles className="h-4 w-4 text-blue-400" />
@@ -55,7 +70,6 @@ export default function LandingPage() {
                 <ChevronRight className="h-4 w-4 text-white/50 group-hover:translate-x-1 transition-transform" />
               </div>
 
-              {/* Main Headline */}
               <div className="space-y-6">
                 <h1 className="text-4xl sm:text-6xl lg:text-7xl xl:text-8xl font-black tracking-tight">
                   <span className="block mb-4">Stop Spending 30 Minutes</span>
@@ -72,7 +86,6 @@ export default function LandingPage() {
                   seconds. One-click application tracking.
                 </p>
 
-                {/* Value Props */}
                 <div className="flex flex-wrap justify-center gap-4 sm:gap-6 pt-6 px-4">
                   {[
                     {
@@ -103,7 +116,6 @@ export default function LandingPage() {
                 </div>
               </div>
 
-              {/* CTA Section */}
               <div className="flex flex-col sm:flex-row gap-4 justify-center items-stretch sm:items-center pt-8 px-4">
                 <Link href="/auth?mode=signup" className="w-full sm:w-auto">
                   <Button
@@ -115,18 +127,16 @@ export default function LandingPage() {
                     </span>
                   </Button>
                 </Link>
-
                 <Link href="/jobs" className="w-full sm:w-auto">
                   <Button
                     size="lg"
                     variant="outline"
                     className="w-full sm:w-auto h-14 sm:h-16 px-8 sm:px-12 text-base sm:text-lg font-semibold border-2 border-white/20 bg-white/5 hover:bg-white/10 hover:border-white/30 backdrop-blur-xl transition-all duration-300">
-                    Browse 3,400+ Jobs
+                    Browse {jobCount} Jobs
                   </Button>
                 </Link>
               </div>
 
-              {/* Trust Indicators */}
               <div className="flex flex-wrap justify-center gap-8 pt-12 text-sm text-gray-500">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 text-green-400" />
@@ -142,52 +152,50 @@ export default function LandingPage() {
                 </div>
               </div>
 
-              {/* Social Proof - Inline */}
+              {/* ── REMOVED: "TRUSTED BY...Google, Meta, Amazon" (no proof) ── */}
+              {/* ── REMOVED: "Join 10,000+ professionals" (false number)     ── */}
+              {/* Replace with honest, real stats */}
               <div className="pt-8">
-                <p className="text-gray-500 text-sm mb-4">
-                  TRUSTED BY JOB SEEKERS AT
-                </p>
-                <div className="flex flex-wrap justify-center gap-8 opacity-50">
-                  {["Google", "Meta", "Amazon", "Microsoft", "Apple"].map(
-                    (company, i) => (
-                      <span key={i} className="text-gray-600 font-bold text-lg">
-                        {company}
-                      </span>
-                    ),
-                  )}
+                <p className="text-gray-500 text-sm mb-4">BUILT FOR</p>
+                <div className="flex flex-wrap justify-center gap-6 text-sm text-gray-400">
+                  {[
+                    "Remote job seekers",
+                    "Career switchers",
+                    "International applicants",
+                    "Nigerian developers going global",
+                  ].map((label, i) => (
+                    <span key={i} className="flex items-center gap-2">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-green-400" />
+                      {label}
+                    </span>
+                  ))}
                 </div>
               </div>
             </div>
 
-            {/* Quick Apply Demo Video/GIF Placeholder */}
+            {/* Demo placeholder */}
             <div className="mt-20 relative">
               <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-cyan-500/20 rounded-3xl blur-3xl"></div>
               <div className="relative group">
                 <div className="absolute -inset-1 bg-gradient-to-r from-blue-500 via-purple-500 to-cyan-500 rounded-3xl opacity-50 group-hover:opacity-75 blur-2xl transition-all duration-500"></div>
                 <div className="relative rounded-2xl border border-white/10 bg-gradient-to-br from-gray-900 to-black overflow-hidden shadow-2xl">
-                  {/* Quick Apply Demo */}
                   <div className="aspect-video relative bg-black flex items-center justify-center">
                     <div className="text-center space-y-6 p-8">
                       <div className="inline-flex p-6 rounded-2xl bg-gradient-to-br from-blue-600 to-purple-600 mb-4">
                         <Sparkles className="h-12 w-12 text-white" />
                       </div>
-                      <h3 className="text-3xl font-bold">Quick Apply Demo</h3>
+                      <h3 className="text-3xl font-bold">
+                        See Quick Apply in Action
+                      </h3>
                       <p className="text-gray-400 max-w-md mx-auto">
-                        Watch how AI tailors your resume for each job in 3
-                        seconds
+                        Upload your CV once. Apply to any job in under 10
+                        seconds.
                       </p>
-                      <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                      <Link href="/auth?mode=signup">
                         <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-                          <span className="mr-2">▶</span> Watch Demo
+                          Try It Free — No Card Needed
                         </Button>
-                        <Link href="/jobs">
-                          <Button
-                            variant="outline"
-                            className="border-white/20 hover:bg-white/10">
-                            Try It Now
-                          </Button>
-                        </Link>
-                      </div>
+                      </Link>
                     </div>
                   </div>
                 </div>
@@ -196,10 +204,10 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Social Proof Bar */}
+        {/* Stats bar — real numbers only */}
         <section className="relative border-y border-white/5 bg-white/[0.02] backdrop-blur-xl py-8">
           <div className="mx-auto max-w-7xl px-6 lg:px-8">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-12 text-center">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-12 text-center">
               <div className="space-y-2">
                 <div className="text-5xl font-black bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
                   3 sec
@@ -210,7 +218,7 @@ export default function LandingPage() {
               </div>
               <div className="space-y-2">
                 <div className="text-5xl font-black bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                  3,400+
+                  {jobCount}
                 </div>
                 <div className="text-sm text-gray-400 font-medium">
                   Live Remote Jobs
@@ -218,10 +226,10 @@ export default function LandingPage() {
               </div>
               <div className="space-y-2">
                 <div className="text-5xl font-black bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">
-                  97%
+                  11
                 </div>
                 <div className="text-sm text-gray-400 font-medium">
-                  Time Saved vs Manual
+                  Job Sources Daily
                 </div>
               </div>
               <div className="space-y-2">
@@ -236,7 +244,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Features Section */}
+        {/* Features */}
         <section className="relative py-32 px-6 lg:px-8">
           <div className="mx-auto max-w-7xl">
             <div className="text-center space-y-4 mb-20">
@@ -276,7 +284,7 @@ export default function LandingPage() {
                 },
                 {
                   icon: Briefcase,
-                  title: "3,400+ Remote Jobs",
+                  title: `${jobCount} Remote Jobs`,
                   description:
                     "Curated opportunities updated daily. Filter by skills, location, salary.",
                   gradient: "from-green-500 to-emerald-500",
@@ -298,10 +306,9 @@ export default function LandingPage() {
                     <p className="text-gray-400 text-sm leading-relaxed">
                       {feature.description}
                     </p>
-
                     {hoveredFeature === i && (
                       <div className="mt-6 pt-6 border-t border-white/10">
-                        <div className="flex items-center gap-2 text-sm font-medium text-blue-400 group-hover:gap-3 transition-all">
+                        <div className="flex items-center gap-2 text-sm font-medium text-blue-400">
                           Learn more <ChevronRight className="h-4 w-4" />
                         </div>
                       </div>
@@ -312,6 +319,7 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
+
         {/* How It Works */}
         <section className="relative py-32 px-6 lg:px-8 bg-gradient-to-br from-blue-950/20 to-purple-950/20">
           <div className="mx-auto max-w-7xl">
@@ -347,9 +355,9 @@ export default function LandingPage() {
                 },
                 {
                   step: "03",
-                  title: "Apply Manually",
+                  title: "Apply & Track",
                   description:
-                    "Download tailored resume. We auto-track the application for you.",
+                    "Download tailored resume, copy cover letter, apply. We auto-track everything in your dashboard.",
                   icon: CheckCircle2,
                   color: "from-green-500 to-emerald-500",
                 },
@@ -387,7 +395,8 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
-        {/* Pricing Section */}
+
+        {/* Pricing */}
         <section className="relative py-32 px-6 lg:px-8">
           <div className="mx-auto max-w-7xl">
             <div className="text-center space-y-4 mb-20">
@@ -403,102 +412,88 @@ export default function LandingPage() {
             </div>
 
             <div className="grid lg:grid-cols-2 gap-8 max-w-5xl mx-auto">
-              {/* Free Plan */}
               <div className="group relative">
                 <div className="absolute -inset-px rounded-3xl bg-gradient-to-r from-gray-500 to-gray-700 opacity-50 group-hover:opacity-75 blur transition-all duration-500"></div>
                 <div className="relative h-full rounded-3xl border border-white/10 bg-gradient-to-br from-gray-900/80 to-black/80 backdrop-blur-2xl p-10">
-                  <div className="space-y-8">
-                    <div>
-                      <h3 className="text-2xl font-bold mb-2">Free</h3>
-                      <div className="flex items-baseline gap-2 mb-4">
-                        <span className="text-6xl font-black">$0</span>
-                        <span className="text-gray-500">/month</span>
-                      </div>
-                      <p className="text-gray-400">
-                        Perfect for getting started
-                      </p>
-                    </div>
-
-                    <ul className="space-y-4">
-                      {[
-                        "Track unlimited applications",
-                        "3 AI analyses per month",
-                        "Basic analytics",
-                        "Job search board",
-                      ].map((item, i) => (
-                        <li key={i} className="flex items-center gap-3">
-                          <CheckCircle2 className="h-5 w-5 text-green-400 shrink-0" />
-                          <span className="text-gray-300">{item}</span>
-                        </li>
-                      ))}
-                    </ul>
-
-                    <Link href="/auth?mode=signup">
-                      <Button
-                        variant="outline"
-                        className="w-full h-14 text-base font-semibold border-2 border-white/20 hover:bg-white/10 hover:border-white/30 transition-all">
-                        Get Started Free
-                      </Button>
-                    </Link>
+                  <h3 className="text-2xl font-bold mb-2">Free</h3>
+                  <div className="flex items-baseline gap-2 mb-4">
+                    <span className="text-6xl font-black">$0</span>
+                    <span className="text-gray-500">/month</span>
                   </div>
+                  <p className="text-gray-400 mb-8">
+                    Perfect for getting started
+                  </p>
+                  <ul className="space-y-4 mb-8">
+                    {[
+                      "Track unlimited applications",
+                      "3 AI analyses per month",
+                      "Basic analytics",
+                      "Job search board",
+                    ].map((item) => (
+                      <li key={item} className="flex items-center gap-3">
+                        <CheckCircle2 className="h-5 w-5 text-green-400 shrink-0" />
+                        <span className="text-gray-300">{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <Link href="/auth?mode=signup">
+                    <Button
+                      variant="outline"
+                      className="w-full h-14 text-base font-semibold border-2 border-white/20 hover:bg-white/10 hover:border-white/30 transition-all">
+                      Get Started Free
+                    </Button>
+                  </Link>
                 </div>
               </div>
 
-              {/* Pro Plan */}
               <div className="group relative">
                 <div className="absolute -top-6 left-1/2 -translate-x-1/2 z-20">
                   <div className="px-6 py-2 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 text-sm font-bold shadow-2xl">
                     MOST POPULAR
                   </div>
                 </div>
-
                 <div className="absolute -inset-px rounded-3xl bg-gradient-to-r from-blue-500 via-purple-500 to-cyan-500 opacity-75 group-hover:opacity-100 blur-xl transition-all duration-500"></div>
                 <div className="relative h-full rounded-3xl border-2 border-blue-500/50 bg-gradient-to-br from-blue-950/80 to-purple-950/80 backdrop-blur-2xl p-10">
-                  <div className="space-y-8">
-                    <div>
-                      <h3 className="text-2xl font-bold mb-2">Pro</h3>
-                      <div className="flex items-baseline gap-2 mb-4">
-                        <span className="text-6xl font-black bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                          $15
-                        </span>
-                        <span className="text-gray-500">/month</span>
-                      </div>
-                      <p className="text-gray-400">For serious job seekers</p>
-                    </div>
-
-                    <ul className="space-y-4">
-                      {[
-                        { text: "Unlimited AI analyses", featured: true },
-                        { text: "AI cover letter generation", featured: true },
-                        { text: "Advanced analytics", featured: false },
-                        { text: "Priority support", featured: false },
-                        { text: "Export to CSV", featured: false },
-                        { text: "Email reminders", featured: false },
-                      ].map((item, i) => (
-                        <li key={i} className="flex items-center gap-3">
-                          <CheckCircle2 className="h-5 w-5 text-blue-400 shrink-0" />
-                          <span
-                            className={
-                              item.featured
-                                ? "text-white font-semibold"
-                                : "text-gray-300"
-                            }>
-                            {item.text}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-
-                    <Link href="/auth?mode=signup">
-                      <Button className="w-full h-14 text-base font-bold bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 shadow-xl shadow-blue-500/50 hover:shadow-blue-500/70 transition-all">
-                        Start Pro Today
-                      </Button>
-                    </Link>
+                  <h3 className="text-2xl font-bold mb-2">Pro</h3>
+                  <div className="flex items-baseline gap-2 mb-1">
+                    <span className="text-6xl font-black bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                      $15
+                    </span>
+                    <span className="text-gray-500">/month</span>
                   </div>
+                  <p className="text-sm text-gray-400 mb-1">
+                    ≈ ₦25,000/month for Nigerian users
+                  </p>
+                  <p className="text-gray-400 mb-8">For serious job seekers</p>
+                  <ul className="space-y-4 mb-8">
+                    {[
+                      { text: "Unlimited AI analyses", featured: true },
+                      { text: "AI cover letter generation", featured: true },
+                      { text: "Advanced analytics", featured: false },
+                      { text: "Priority support", featured: false },
+                      { text: "Email reminders", featured: false },
+                    ].map((item) => (
+                      <li key={item.text} className="flex items-center gap-3">
+                        <CheckCircle2 className="h-5 w-5 text-blue-400 shrink-0" />
+                        <span
+                          className={
+                            item.featured
+                              ? "text-white font-semibold"
+                              : "text-gray-300"
+                          }>
+                          {item.text}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  <Link href="/auth?mode=signup">
+                    <Button className="w-full h-14 text-base font-bold bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 shadow-xl shadow-blue-500/50 hover:shadow-blue-500/70 transition-all">
+                      Start Pro Today
+                    </Button>
+                  </Link>
                 </div>
               </div>
             </div>
-
             <p className="mt-12 text-center text-gray-500">
               💎 70% cheaper than competitors — Jobscan charges $49/mo
             </p>
@@ -511,28 +506,24 @@ export default function LandingPage() {
             <div className="relative group">
               <div className="absolute -inset-1 bg-gradient-to-r from-blue-500 via-purple-500 to-cyan-500 rounded-3xl opacity-50 group-hover:opacity-75 blur-2xl transition-all duration-500"></div>
               <div className="relative rounded-3xl border border-white/10 bg-gradient-to-br from-gray-900/90 to-black/90 backdrop-blur-2xl p-16 text-center">
-                <div className="space-y-8">
-                  <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black">
-                    <span className="block mb-2">Ready to Master</span>
-                    <span className="block bg-gradient-to-r from-blue-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent">
-                      Every Phase of Your Search?
-                    </span>
-                  </h2>
-
-                  <p className="text-xl text-gray-400 max-w-2xl mx-auto">
-                    Join 10,000+ professionals tracking their job search with
-                    MyJobPhase
-                  </p>
-
-                  <Link href="/auth?mode=signup">
-                    <Button
-                      size="lg"
-                      className="h-16 px-12 text-lg font-bold bg-white text-black hover:bg-white/90 shadow-2xl hover:scale-105 transition-all duration-300">
-                      Start Free Today
-                      <ArrowRight className="ml-2 h-5 w-5" />
-                    </Button>
-                  </Link>
-                </div>
+                <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black mb-6">
+                  <span className="block mb-2">Ready to Master</span>
+                  <span className="block bg-gradient-to-r from-blue-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent">
+                    Every Phase of Your Search?
+                  </span>
+                </h2>
+                <p className="text-xl text-gray-400 max-w-2xl mx-auto mb-8">
+                  Free to start. No credit card. Apply to your first job in
+                  under 2 minutes.
+                </p>
+                <Link href="/auth?mode=signup">
+                  <Button
+                    size="lg"
+                    className="h-16 px-12 text-lg font-bold bg-white text-black hover:bg-white/90 shadow-2xl hover:scale-105 transition-all duration-300">
+                    Start Free Today
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </Button>
+                </Link>
               </div>
             </div>
           </div>

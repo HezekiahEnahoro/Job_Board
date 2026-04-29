@@ -1,53 +1,182 @@
 export default function PrivacyPage() {
+  const lastUpdated = "April 29, 2026";
+
   return (
-    <div className="container mx-auto max-w-4xl px-6 py-16">
-      <h1 className="text-5xl font-black mb-8">Privacy Policy</h1>
+    <div className="min-h-screen bg-black text-white">
+      <div className="max-w-3xl mx-auto px-6 py-20">
+        <h1 className="text-4xl font-black mb-2">Privacy Policy</h1>
+        <p className="text-gray-400 mb-12">Last updated: {lastUpdated}</p>
 
-      <div className="prose prose-invert max-w-none space-y-8">
-        <p className="text-gray-400 text-lg">
-          Last updated: {new Date().toLocaleDateString()}
-        </p>
+        <div className="space-y-10 text-gray-300 leading-relaxed">
+          <section>
+            <h2 className="text-xl font-bold text-white mb-3">1. Who We Are</h2>
+            <p>
+              MyJobPhase (&quot;we&quot;, &quot;us&quot;, &quot;our&quot;) is an
+              AI-powered job application platform accessible at myjobphase.com.
+              We help job seekers apply to remote jobs faster using artificial
+              intelligence.
+            </p>
+          </section>
 
-        <section>
-          <h2 className="text-2xl font-bold mb-4">1. Information We Collect</h2>
-          <p className="text-gray-300 leading-relaxed">
-            We collect information you provide directly to us, including your
-            name, email address, resume, and job preferences when you create an
-            account or use our services.
-          </p>
-        </section>
+          <section>
+            <h2 className="text-xl font-bold text-white mb-3">
+              2. What We Collect
+            </h2>
+            <p className="mb-3">
+              We collect the following information when you use our service:
+            </p>
+            <ul className="space-y-2 ml-4">
+              <li>
+                • <strong className="text-white">Account information:</strong>{" "}
+                Email address and password (hashed, never stored in plain text)
+              </li>
+              <li>
+                • <strong className="text-white">Resume data:</strong> Your
+                uploaded CV, extracted skills, work experience, and education
+              </li>
+              <li>
+                • <strong className="text-white">Application data:</strong> Jobs
+                you apply to, application status, and notes you add
+              </li>
+              <li>
+                • <strong className="text-white">Usage data:</strong> Pages
+                visited, features used, and error logs to improve the service
+              </li>
+              <li>
+                • <strong className="text-white">Payment data:</strong>{" "}
+                Processed by Stripe or Paystack — we never store card numbers
+              </li>
+            </ul>
+          </section>
 
-        <section>
-          <h2 className="text-2xl font-bold mb-4">
-            2. How We Use Your Information
-          </h2>
-          <p className="text-gray-300 leading-relaxed">
-            We use your information to provide, maintain, and improve our
-            services, including AI-powered job matching, resume analysis, and
-            application tracking.
-          </p>
-        </section>
+          <section>
+            <h2 className="text-xl font-bold text-white mb-3">
+              3. How We Use Your Data
+            </h2>
+            <ul className="space-y-2 ml-4">
+              <li>
+                • To match your profile against job listings and compute match
+                scores
+              </li>
+              <li>
+                • To generate tailored resumes and cover letters for specific
+                jobs
+              </li>
+              <li>• To send job alert emails (only if you opt in)</li>
+              <li>• To process payments and manage your subscription</li>
+              <li>• To improve our AI models and product features</li>
+            </ul>
+          </section>
 
-        <section>
-          <h2 className="text-2xl font-bold mb-4">3. Data Security</h2>
-          <p className="text-gray-300 leading-relaxed">
-            We implement appropriate security measures to protect your personal
-            information against unauthorized access, alteration, or destruction.
-          </p>
-        </section>
+          <section>
+            <h2 className="text-xl font-bold text-white mb-3">
+              4. Who We Share Data With
+            </h2>
+            <p className="mb-3">
+              We do not sell your personal data. We share data only with:
+            </p>
+            <ul className="space-y-2 ml-4">
+              <li>
+                • <strong className="text-white">Groq:</strong> AI processing
+                for resume parsing and content generation
+              </li>
+              <li>
+                • <strong className="text-white">Supabase/PostgreSQL:</strong>{" "}
+                Secure database hosting
+              </li>
+              <li>
+                • <strong className="text-white">Stripe / Paystack:</strong>{" "}
+                Payment processing
+              </li>
+              <li>
+                • <strong className="text-white">Resend:</strong> Transactional
+                email delivery
+              </li>
+              <li>
+                • <strong className="text-white">Vercel / Render:</strong>{" "}
+                Application hosting
+              </li>
+            </ul>
+          </section>
 
-        <section>
-          <h2 className="text-2xl font-bold mb-4">4. Contact Us</h2>
-          <p className="text-gray-300 leading-relaxed">
-            If you have any questions about this Privacy Policy, please contact
-            us at{" "}
-            <a
-              href="mailto:privacy@myjobphase.com"
-              className="text-blue-400 hover:text-blue-300">
-              privacy@myjobphase.com
-            </a>
-          </p>
-        </section>
+          <section>
+            <h2 className="text-xl font-bold text-white mb-3">
+              5. Data Retention
+            </h2>
+            <p>
+              We retain your account data for as long as your account is active.
+              If you delete your account, we delete your personal data within 30
+              days. Application tracking data and generated documents are
+              deleted with your account.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-bold text-white mb-3">
+              6. Your Rights
+            </h2>
+            <p className="mb-3">You have the right to:</p>
+            <ul className="space-y-2 ml-4">
+              <li>• Access the personal data we hold about you</li>
+              <li>• Request correction of inaccurate data</li>
+              <li>• Request deletion of your account and data</li>
+              <li>• Export your data (applications, resume data)</li>
+              <li>• Opt out of email alerts at any time</li>
+            </ul>
+            <p className="mt-3">
+              To exercise these rights, email us at{" "}
+              <a
+                href="mailto:privacy@myjobphase.com"
+                className="text-blue-400 hover:underline">
+                privacy@myjobphase.com
+              </a>
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-bold text-white mb-3">7. Security</h2>
+            <p>
+              Passwords are hashed using bcrypt and never stored in plain text.
+              All data is transmitted over HTTPS. We use Supabase&apos;s
+              enterprise-grade security for database storage. Payment data is
+              handled entirely by Stripe and Paystack — we never see or store
+              your card details.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-bold text-white mb-3">8. Cookies</h2>
+            <p>
+              We use essential cookies for authentication (JWT tokens) and
+              session management. We do not use advertising cookies or
+              third-party tracking cookies.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-bold text-white mb-3">
+              9. Changes to This Policy
+            </h2>
+            <p>
+              We may update this policy as we add features. We&apos;ll notify
+              you of material changes via email or an in-app notice. Continued
+              use of the service after changes means you accept the updated
+              policy.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-bold text-white mb-3">10. Contact</h2>
+            <p>
+              Questions about privacy? Email{" "}
+              <a
+                href="mailto:privacy@myjobphase.com"
+                className="text-blue-400 hover:underline">
+                privacy@myjobphase.com
+              </a>
+            </p>
+          </section>
+        </div>
       </div>
     </div>
   );

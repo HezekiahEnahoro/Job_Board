@@ -25,6 +25,7 @@ def upsert_job(db: Session, payload: schemas.JobCreate) -> models.Job:
         if payload.skills:                 existing.skills = payload.skills
         if payload.location is not None:  existing.location = payload.location
         if payload.remote_flag is not None: existing.remote_flag = payload.remote_flag
+        if payload.description_text:       existing.description_text = payload.description_text
         db.add(existing)
         db.commit()
         db.refresh(existing)

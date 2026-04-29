@@ -1,6 +1,6 @@
 This favicon was generated using the following font:
 
-- Font Title: Oi
+- Font Title: Major Mono Display
 - Font Author: undefined
-- Font Source: https://fonts.gstatic.com/s/oi/v20/w8gXH2EuRqtaut6yjBOG.ttf
+- Font Source: https://fonts.gstatic.com/s/majormonodisplay/v17/RWmVoLyb5fEqtsfBX9PDZIGr2tFubRhLCn2QIndPww.ttf
 - Font License: undefined)

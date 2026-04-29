@@ -17,6 +17,7 @@ from app.services.auth.router import router as auth_router
 from app.services.applications.router import router as applications_router
 from app.services.email.router import router as email_router
 from app.services.ai.router import router as ai_router
+from app.services.paystack.router import router as paystack_router
 from app.services.stripe.router import router as stripe_router
 from app.services.profile.router import router as profile_router
 from app.services.matching.router import router as matching_router
@@ -140,6 +141,7 @@ app.include_router(resume_generator_router)
 app.include_router(cover_letter_router)
 app.include_router(onboarding_router)
 app.include_router(interview_prep_router)
+app.include_router(paystack_router)
 
 
 # ── Core endpoints ────────────────────────────────────────────────────
