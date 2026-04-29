@@ -77,9 +77,6 @@ def filter_worldwide_jobs(jobs: list[dict], source_name: str) -> list[dict]:
 def _bulk_upsert(db: Session, jobs: list[dict]):
     from app.core.translate import translate_to_english, is_english
     for jd in jobs:
-        desc = jd.get("description_text", "")
-        if desc and not is_english(desc):
-            jd["description_text"] = translate_to_english(desc)
         payload = schemas.JobCreate(**jd)
         crud.upsert_job(db, payload)
 

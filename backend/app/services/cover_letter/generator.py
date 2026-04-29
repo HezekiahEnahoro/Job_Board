@@ -14,27 +14,12 @@ def generate_cover_letter_with_ai(
     user_experience: list,
     template_content: Optional[str] = None
 ) -> str:
-    """
-    Generate a personalized cover letter using AI
-    
-    Args:
-        job_title: The job title
-        job_description: Job description text
-        company: Company name
-        user_name: User's full name
-        user_summary: User's professional summary
-        user_experience: List of user's experience dicts
-        template_content: Optional template to base the letter on
-    
-    Returns:
-        Generated cover letter text
-    """
-    
+
     experience_summary = "\n".join([
         f"- {exp.get('title')} at {exp.get('company')}: {exp.get('description', '')[:200]}"
         for exp in user_experience[:3]
     ])
-    
+
     if template_content:
         prompt = f"""You are a professional cover letter writer. Use this template to create a personalized cover letter.
 
@@ -57,88 +42,60 @@ Instructions:
 - Keep the template's structure and tone
 - Make it specific to this job and company
 - Highlight relevant experience
-- Show enthusiasm for the role
-- 3-4 paragraphs maximum
-- Professional but engaging tone
-
-Return ONLY the cover letter, no additional commentary.
+- 3 paragraphs maximum
+- Return ONLY the cover letter text, no commentary.
 """
     else:
-        prompt = f"""You are a professional cover letter writer. Create a compelling cover letter for this job application.
+        prompt = f"""Write a cover letter for this job application. It must sound like a real person wrote it — not a template, not AI.
 
-Job Details:
-- Position: {job_title}
+STRICT RULES — violating any of these makes the letter unusable:
+- Do NOT start with "I am excited", "I am writing to", "I am thrilled", or any variation
+- Do NOT use: "leverage", "utilize", "I would welcome the opportunity", "Thank you for considering"
+- Do NOT use "Dear Hiring Manager" — use no salutation at all, just start the letter
+- Do NOT end with "Sincerely" or any sign-off — just end the last paragraph naturally
+- Maximum 3 short paragraphs
+- First sentence must be specific to this company or role — not generic
+- Reference actual requirements from the job description
+- Reference actual experience from the candidate's background
+- Sound direct and confident, not eager or apologetic
+
+Job:
+- Role: {job_title}
 - Company: {company}
 - Description: {job_description[:800]}
 
-Candidate Details:
+Candidate:
 - Name: {user_name}
-- Summary: {user_summary}
-- Recent Experience:
+- Background: {user_summary}
+- Experience:
 {experience_summary}
 
-Instructions:
-- Opening: Express specific interest in the company and role
-- Body: Highlight 2-3 relevant experiences/achievements
-- Closing: Strong call to action
-- 3-4 paragraphs maximum
-- Professional but engaging tone
-- Show you researched the company
-- Make it personal, not generic
-
-Format:
-Dear Hiring Manager,
-
-[Opening paragraph]
-
-[Body paragraphs]
-
-[Closing paragraph]
-
-Sincerely,
-{user_name}
-
-Return ONLY the cover letter, no additional commentary.
+Return ONLY the cover letter body — 3 paragraphs, no salutation, no sign-off.
 """
-    
+
     try:
         response = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.7,
-            max_tokens=800
+            max_tokens=600
         )
-        
-        cover_letter = response.choices[0].message.content.strip()
-        return cover_letter
-        
+
+        return response.choices[0].message.content.strip()
+
     except Exception as e:
         print(f"Error generating cover letter: {e}")
-        return f"""Dear Hiring Manager,
-
-I am writing to express my interest in the {job_title} position at {company}.
+        # Minimal fallback — better than the old generic one
+        return f"""{company} caught my attention for the {job_title} role because of the specific work described in the listing.
 
 {user_summary}
 
-I would welcome the opportunity to discuss how my skills and experience align with your needs.
-
-Sincerely,
-{user_name}"""
+I'd like to talk about how my background fits what you're building. Happy to connect at your convenience."""
 
 
 def fill_template_placeholders(template: str, values: Dict[str, str]) -> str:
-    """
-    Fill template placeholders like {{company}}, {{position}}, etc.
-    
-    Args:
-        template: Template string with {{placeholders}}
-        values: Dict of placeholder values
-    
-    Returns:
-        Filled template
-    """
     result = template
     for key, value in values.items():
-        placeholder = f"{{{{{key}}}}}"  # {{key}}
+        placeholder = f"{{{{{key}}}}}"
         result = result.replace(placeholder, value)
     return result
