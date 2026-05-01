@@ -1,416 +1,249 @@
-from typing import List, Dict, Any
+"""
+app/services/matching/scorer.py
+
+Two-stage scoring:
+1. keyword_prescore()  — instant, used to filter 1000 jobs down to candidates
+2. calculate_match_score() — AI via Groq, used only on the 25 displayed jobs
+3. score_jobs_batch() — runs AI scoring in parallel via ThreadPoolExecutor
+
+Flow in matcher.py:
+  ALL jobs filtered → keyword prescore → top N candidates → AI score 25 → return
+"""
+
+import os
 import re
+import json
+import logging
+from typing import List, Dict, Any
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# ── Role categories ───────────────────────────────────────────────────
-# Maps role keywords to category labels.
-# Used to detect role type mismatch between job and user profile.
+logger = logging.getLogger(__name__)
 
-ROLE_CATEGORIES = {
-    "engineering": [
-        "software engineer", "software developer", "backend", "frontend",
-        "full stack", "fullstack", "full-stack", "data engineer", "devops",
-        "platform engineer", "site reliability", "sre", "ml engineer",
-        "machine learning engineer", "ai engineer", "infrastructure",
-        "embedded", "systems engineer", "cloud engineer", "mobile developer",
-        "ios developer", "android developer", "python developer",
-        "javascript developer", "typescript developer", "rust developer",
-        "golang developer", "java developer",
-        # German equivalents
-        "softwareentwickler", "entwickler", "programmierer",
-    ],
-    "data": [
-        "data analyst", "data scientist", "analytics engineer",
-        "business intelligence", "bi developer", "data architect",
-        "data engineer", "analytics",
-    ],
-    "product": [
-        "product manager", "product owner", "program manager",
-        "project manager", "scrum master",
-        # German
-        "projektmanager", "projektleiter",
-    ],
-    "design": [
-        "ux designer", "ui designer", "product designer", "graphic designer",
-        "visual designer", "motion designer", "design lead",
-    ],
-    "marketing": [
-        "marketing manager", "content marketing", "growth marketer",
-        "seo", "sem", "social media", "brand manager", "copywriter",
-        "content creator", "digital marketing", "performance marketing",
-        "influencer marketing",
-        # German
-        "marketing", "redakteur", "texter",
-    ],
-    "sales": [
-        "sales", "account executive", "business development",
-        "account manager", "sales manager", "sales rep",
-        # German
-        "vertrieb", "verkauf", "außendienst",
-    ],
-    "customer_success": [
-        "customer success", "client success", "customer support",
-        "customer service", "account management", "onboarding specialist",
-        "client onboarding", "technical support", "support engineer",
-        "help desk",
-        # German
-        "kundenbetreuer", "kundenservice", "kundensupport",
-    ],
-    "operations": [
-        "operations manager", "operations analyst", "chief of staff",
-        "business operations", "revenue operations", "revops",
-    ],
-    "finance": [
-        "financial analyst", "accountant", "controller", "cfo",
-        "finance manager", "bookkeeper", "accounting",
-        # German — critical additions
-        "buchhaltung", "buchhalter", "buchhalterin", "finanzbuchhalter",
-        "lohnbuchhalter", "steuerfachangestellte", "bilanzbuchhalter",
-        "rechnungswesen", "controlling", "finanzmanager",
-        "sachbearbeiter buchhaltung", "sachbearbeitung",
-    ],
-    "hr": [
-        "recruiter", "talent acquisition", "hr manager", "people ops",
-        "human resources",
-        # German
-        "personalreferent", "personalwesen", "personalbeschaffung",
-    ],
-    "admin": [
-        "office manager", "administrative assistant", "secretary",
-        "executive assistant", "receptionist", "office coordinator",
-        # German
-        "büromanager", "bürokaufmann", "bürokauffrau", "assistenz",
-        "verwaltung", "sachbearbeiter", "sekretär", "sekretärin",
-    ],
-}
+_groq_client = None
 
-# Hard language requirement patterns
-LANGUAGE_REQUIREMENTS = [
+
+def _get_client():
+    global _groq_client
+    if _groq_client is None:
+        from groq import Groq
+        _groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+    return _groq_client
+
+
+# ── Language blockers ─────────────────────────────────────────────────
+
+_LANG_PATTERNS = [
     r'\b(fluent|native|proficient|bilingual)\s+(in\s+)?(german|deutsch|french|spanish|portuguese|dutch|italian|polish|swedish|norwegian|danish|finnish)\b',
-    r'\b(german|deutsch|french|spanish|portuguese|dutch)\s+(language\s+)?(required|mandatory|must|essential|needed)\b',
-    r'\bspeaking\s+(german|deutsch|french|spanish|portuguese|dutch)\b',
-    r'\b(german|french|spanish)\s+speaking\b',
-    r'\bsprichst\s+deutsch\b',  # German "you speak German"
-    r'\bdeutschkenntnisse\b',   # German "German skills"
-    r'\bDeutsch\b.*\berforderlich\b',  # German required
+    r'\b[BC][12]\s+(level\s+)?(german|deutsch|french|spanish|dutch)\b',
+    r'\b(german|deutsch|french|spanish|dutch)\s+[BC][12]\b',
+    r'\bcommunicat\w+\s+(fluently\s+)?in\s+german\b',
+    r'\bsprichst\s+deutsch\b',
+    r'\bdeutschkenntnisse\b',
+    r'\bminijob\b', r'\bwerkstudent\b', r'\bpraktikum\b',
+]
+
+# ── Role category fast detection ──────────────────────────────────────
+
+_NON_TECH_TITLE_SIGNALS = [
+    # Sales / BDR
+    "sales", "business development", "account executive", "bdr", "sdr",
+    # Customer success
+    "customer success", "client success", "onboarding specialist",
+    # Marketing
+    "marketing", "seo", "content creator", "social media",
+    # Finance / Accounting
+    "accountant", "buchhalter", "buchhaltung", "controller", "cfo",
+    "demand planner", "supply chain", "logistics",
+    # Legal
+    "jurist", "lawyer", "attorney", "rechtsanwalt", "legal",
+    # HR
+    "recruiter", "talent acquisition", "hr manager", "people ops",
+    # Consulting (non-tech)
+    "management consultant", "strategy consultant",
+]
+
+_TECH_SKILLS = [
+    "python", "typescript", "javascript", "react", "node.js", "next.js",
+    "postgresql", "mongodb", "redis", "aws", "docker", "kubernetes",
+    "fastapi", "django", "flask", "kafka", "airflow", "dbt", "spark",
+    "git", "sql", "pandas", "numpy", "pytorch", "tensorflow",
+    "rust", "golang", "java", "c++", "graphql", "grpc",
+    "terraform", "ansible", "ci/cd", "github actions",
+    "data engineering", "data pipeline", "etl", "elt",
 ]
 
 
-def detect_role_category(title: str, description: str) -> str:
-    """Detect the primary role category from job title and description."""
-    text = f"{title} {description[:500]}".lower()
-
-    category_scores = {}
-    for category, keywords in ROLE_CATEGORIES.items():
-        score = sum(1 for kw in keywords if kw in text)
-        if score > 0:
-            category_scores[category] = score
-
-    if not category_scores:
-        return "other"
-
-    return max(category_scores, key=category_scores.get)
-
-
-def detect_user_category(user_skills: List[str], user_experience: List[Dict]) -> str:
-    """Infer user's role category from their skills and experience titles."""
-    # Build text from experience titles
-    experience_titles = " ".join([
-        exp.get("title", "") for exp in user_experience
-    ]).lower()
-
-    skills_text = " ".join(user_skills).lower()
-    combined = f"{experience_titles} {skills_text}"
-
-    # Engineering signals
-    eng_signals = [
-        "engineer", "developer", "python", "javascript", "typescript",
-        "react", "fastapi", "django", "kafka", "airflow", "dbt",
-        "docker", "kubernetes", "aws", "postgresql", "mongodb",
-        "data pipeline", "etl", "elt", "spark", "hadoop",
-    ]
-
-    data_signals = [
-        "data engineer", "data analyst", "data scientist", "airflow",
-        "kafka", "dbt", "spark", "etl", "pipeline", "lakehouse",
-        "medallion", "parquet", "snowflake", "databricks",
-    ]
-
-    data_score = sum(1 for s in data_signals if s in combined)
-    eng_score = sum(1 for s in eng_signals if s in combined)
-
-    if data_score >= 3:
-        return "data"
-    if eng_score >= 3:
-        return "engineering"
-
-    return "engineering"  # default for tech profiles
-
-
-def check_hard_blockers(job_description: str) -> Dict[str, bool]:
+def keyword_prescore(job: Dict, user_profile: Dict) -> int:
     """
-    Detect hard requirements that are likely blockers.
-    Returns dict of blocker type → True if detected.
-    """
-    text = job_description.lower()
-    blockers = {}
+    Fast keyword pre-score (no AI). Returns 0-100.
+    Used to filter 1000 jobs down to ~50 candidates before AI scoring.
 
-    # Language requirements
-    for pattern in LANGUAGE_REQUIREMENTS:
+    Conservative: prefers false positives (keeps borderline jobs)
+    over false negatives (dropping good jobs). AI does final accurate scoring.
+    """
+    user_skills = {s.lower().strip() for s in user_profile.get("skills", [])}
+
+    title = (job.get("title", "") or "").lower()
+    description = (job.get("description", "") or job.get("description_text", "") or "").lower()
+    text = f"{title} {description[:600]}"
+
+    # Hard blockers → 0
+    for pattern in _LANG_PATTERNS:
         if re.search(pattern, text, re.IGNORECASE):
-            blockers["non_english_language_required"] = True
-            break
+            return 0
 
-    return blockers
+    # Non-tech role type in title → 5
+    if any(signal in title for signal in _NON_TECH_TITLE_SIGNALS):
+        return 5
 
+    # Internship/junior indicators → 5
+    junior_signals = [
+        "internship", "intern ", "praktikum", "werkstudent",
+        "minijob", "trainee", "entry level", "entry-level",
+        "aushilfe", "studentenjob",
+    ]
+    if any(s in text for s in junior_signals):
+        return 5
 
-def calculate_skills_match(job_skills: List[str], user_skills: List[str], job_description: str = "") -> float:
-    """Calculate skills overlap. Extracts skills from description if job_skills is empty."""
+    # Skill overlap scoring
+    job_skills = {s for s in _TECH_SKILLS if s in description}
+    if not job_skills:
+        # No recognizable tech skills in description — uncertain, give 30
+        return 30
 
-    # Extract skills from description if not provided
-    if not job_skills and job_description:
-        KNOWN_SKILLS = [
-            "python", "javascript", "typescript", "react", "node.js", "next.js",
-            "vue", "angular", "java", "go", "rust", "c++", "c#", "ruby", "php",
-            "sql", "postgresql", "mysql", "mongodb", "redis", "elasticsearch",
-            "aws", "azure", "gcp", "docker", "kubernetes", "terraform",
-            "fastapi", "django", "flask", "express", "spring",
-            "kafka", "airflow", "dbt", "spark", "hadoop", "flink",
-            "git", "linux", "graphql", "rest", "grpc",
-            "pandas", "numpy", "pytorch", "tensorflow", "scikit-learn",
-        ]
-        desc_lower = job_description.lower()
-        job_skills = [s for s in KNOWN_SKILLS if s in desc_lower]
+    overlap = job_skills.intersection(user_skills)
+    skill_score = min(int((len(overlap) / len(job_skills)) * 100), 100)
 
-    if not job_skills or not user_skills:
-        return 0.0
-
-    job_norm = {s.lower().strip() for s in job_skills}
-    user_norm = {s.lower().strip() for s in user_skills}
-
-    overlap = job_norm.intersection(user_norm)
-
-    if not job_norm:
-        return 0.0
-
-    return min((len(overlap) / len(job_norm)) * 100, 100.0)
+    # Minimum 20 if any tech skills present (don't over-penalize unfamiliar tech)
+    return max(skill_score, 20)
 
 
-def calculate_experience_match(
-    job_title: str,
-    job_description: str,
-    user_experience: List[Dict],
-    user_skills: List[str],
-    job_category: str,
-    user_category: str,
-) -> float:
-    """
-    Calculate experience match.
-    Penalizes heavily for role category mismatch.
-    No artificial base score — starts at 0.
-    """
+# ── AI scoring ────────────────────────────────────────────────────────
 
-
-    # Seniority mismatch — cap internships, minijobs, student roles for experienced candidates
-    job_text_lower = f"{job_title} {job_description[:300]}".lower()
-
-    is_junior_role = any(w in job_text_lower for w in [
-        # English
-        "internship", "intern", "trainee", "apprentice",
-        "entry level", "entry-level", "graduate role",
-        "no experience required", "recent graduate",
-        # German
-        "praktikum", "praktikant", "praktikantin",
-        "werkstudent", "werkstudentin",
-        "minijob", "mini-job", "mini job",
-        "aushilfe", "studentenjob", "nebenjob",
-        "teilzeit student", "part-time student",
-    ])
-    has_real_experience = len(user_experience) >= 2
-
-    if is_junior_role and has_real_experience:
-        return 12.0  # Experienced candidate — junior/minijob roles are irrelevant
-
-    # Hard penalty for role category mismatch
-    COMPATIBLE = {
-        "engineering": {"engineering", "data"},
-        "data": {"data", "engineering"},
-        "product": {"product"},
-        "design": {"design"},
-        "marketing": {"marketing"},
-        "sales": {"sales"},
-        "customer_success": {"customer_success"},
-        "operations": {"operations"},
-        "finance": {"finance"},
-        "hr": {"hr"},
-        "other": set(ROLE_CATEGORIES.keys()),  # other matches anything
-    }
-
-    user_compatible = COMPATIBLE.get(user_category, set())
-    if job_category not in user_compatible and job_category != "other":
-        # Role mismatch — cap experience score at 20
-        return 10.0
-
-    if not user_experience:
-        return 20.0
-
-    # Check experience title relevance
-    job_text = f"{job_title} {job_description[:300]}".lower()
-
-    # Remove stop words for cleaner matching
-    stop_words = {"the", "and", "for", "with", "you", "are", "this", "that",
-                  "will", "have", "from", "your", "our", "we", "be", "to",
-                  "of", "in", "is", "it", "as", "at", "by", "an", "a"}
-
-    job_words = {w for w in re.findall(r'\b\w+\b', job_text) if w not in stop_words and len(w) > 3}
-
-    relevant_roles = 0
-    for exp in user_experience:
-        exp_text = f"{exp.get('title', '')} {exp.get('description', '')}".lower()
-        exp_words = set(re.findall(r'\b\w+\b', exp_text))
-        overlap = job_words.intersection(exp_words)
-        if len(overlap) >= 3:
-            relevant_roles += 1
-
-    # Score based on relevant experience found
-    if relevant_roles >= 2:
-        base = 85.0
-    elif relevant_roles == 1:
-        base = 70.0
-    else:
-        base = 35.0
-
-    # Boost for matching skills in user's background
-    skill_boost = 0
-    user_skill_set = {s.lower() for s in user_skills}
-    job_lower = job_text.lower()
-    for skill in user_skill_set:
-        if skill in job_lower:
-            skill_boost += 3
-
-    return min(base + skill_boost, 100.0)
-
-
-def calculate_preferences_match(job: Dict, user_preferences: Dict) -> float:
-    """
-    Match job against user preferences.
-    No artificial floor — if preferences don't match, score is low.
-    """
-    if not user_preferences:
-        return 50.0  # neutral — not 70
-
-    score = 0.0
-    total_weight = 0.0
-
-    # Remote preference (weight: 30)
-    if "remote_only" in user_preferences:
-        total_weight += 30
-        if user_preferences["remote_only"] and job.get("remote"):
-            score += 30
-        elif not user_preferences["remote_only"]:
-            score += 30  # not remote-only, any job is fine
-
-    # Job type match (weight: 40)
-    job_types = user_preferences.get("job_types", [])
-    if job_types:
-        total_weight += 40
-        job_title = job.get("title", "").lower()
-        if any(jt.lower() in job_title for jt in job_types):
-            score += 40
-        else:
-            score += 10  # partial — wrong type
-
-    # Location (weight: 30)
-    preferred_locations = user_preferences.get("preferred_locations", [])
-    if preferred_locations:
-        total_weight += 30
-        job_location = job.get("location", "").lower()
-        if any(loc.lower() in job_location for loc in preferred_locations):
-            score += 30
-        elif job.get("remote"):
-            score += 25  # remote is fine for any location preference
-
-    if total_weight == 0:
-        return 50.0
-
-    return (score / total_weight) * 100
-
-
-def calculate_match_score(job: Dict, user_profile: Dict) -> Dict[str, Any]:
-    """
-    Calculate overall match score between job and user profile.
-
-    Weights:
-    - Skills match: 50% (most important — concrete and measurable)
-    - Experience match: 35% (includes role category penalty)
-    - Preferences match: 15% (nice to have)
-
-    Hard blockers cap the score regardless of other signals.
-    """
+def _build_prompt(job: Dict, user_profile: Dict) -> str:
     user_skills = user_profile.get("skills", [])
     user_experience = user_profile.get("experience", [])
     user_preferences = user_profile.get("preferences", {})
 
-    job_title = job.get("title", "")
-    job_description = job.get("description", "")
-    job_skills = job.get("skills", [])
+    exp_lines = "\n".join([
+        f"- {e.get('title', '')} at {e.get('company', '')}"
+        for e in user_experience[:4]
+    ])
 
-    # Detect categories
-    job_category = detect_role_category(job_title, job_description)
-    user_category = detect_user_category(user_skills, user_experience)
+    target_roles = user_preferences.get("job_titles", [])
+    targets = ", ".join(target_roles) if target_roles else "software/data engineering"
+    skills = ", ".join(user_skills[:30])
 
-    # Check hard blockers
-    blockers = check_hard_blockers(job_description)
+    title = job.get("title", "")
+    desc = (job.get("description", "") or job.get("description_text", "") or "")[:1200]
+    location = job.get("location", "")
 
-    # Calculate component scores
-    skills_score = calculate_skills_match(job_skills, user_skills, job_description)
+    return f"""Professional recruiter scoring job fit. Be strict.
 
-    experience_score = calculate_experience_match(
-        job_title,
-        job_description,
-        user_experience,
-        user_skills,
-        job_category,
-        user_category,
-    )
+CANDIDATE:
+- Target: {targets}
+- Skills: {skills}
+- Experience:
+{exp_lines}
 
-    preferences_score = calculate_preferences_match(job, user_preferences)
+JOB:
+- Title: {title}
+- Location: {location}
+- Description: {desc}
 
-    # Weighted score
-    raw_score = (
-        skills_score * 0.50 +
-        experience_score * 0.35 +
-        preferences_score * 0.15
-    )
+RULES:
+1. Non-English language required (German C1/B2, French, Dutch etc) + no evidence candidate speaks it → cap 15
+2. Wrong role type (legal, accounting, supply chain, marketing, HR, sales consulting) vs engineering/data background → cap 20
+3. Internship/Praktikum/Werkstudent/Minijob + candidate has 2+ years experience → cap 15
+4. Genuine match on role + skills → 65-95
+5. Partial match → 30-64
+6. "Automation" in accounting job ≠ data engineering. Score ACTUAL fit.
 
-    # Apply hard blocker penalties
-    if blockers.get("non_english_language_required"):
-        raw_score = min(raw_score, 25.0)
+Return ONLY JSON (no markdown):
+{{"match_score":<0-100>,"skills_match":<0-100>,"experience_match":<0-100>,"preferences_match":<0-100>,"matched_skills":[<strings max 5>],"missing_skills":[<strings max 5>],"reason":"<one sentence>"}}"""
 
-    final_score = round(raw_score)
 
-    # Matched and missing skills for display
-    job_skills_for_display = job_skills or [
-        s for s in [
-            "python", "typescript", "react", "postgresql", "aws", "docker",
-            "kafka", "airflow", "dbt", "fastapi", "node.js", "kubernetes",
-        ]
-        if s in job_description.lower()
-    ]
+def calculate_match_score(job: Dict, user_profile: Dict) -> Dict[str, Any]:
+    """AI score one job. Called in parallel from score_jobs_batch."""
+    title = job.get("title", "unknown")
+    try:
+        response = _get_client().chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[{"role": "user", "content": _build_prompt(job, user_profile)}],
+            temperature=0.1,
+            max_tokens=250,
+        )
+        content = response.choices[0].message.content.strip()
 
-    job_norm = {s.lower().strip() for s in job_skills_for_display}
-    user_norm = {s.lower().strip() for s in user_skills}
+        # Strip code fences
+        if "```" in content:
+            for part in content.split("```"):
+                part = part.strip().lstrip("json").strip()
+                if part.startswith("{"):
+                    content = part
+                    break
 
-    matched = list(job_norm.intersection(user_norm))
-    missing = list(job_norm - user_norm)
+        result = json.loads(content)
+        score = max(0, min(100, int(result.get("match_score", 0))))
+        return {
+            "match_score": score,
+            "skills_match": int(result.get("skills_match", 0)),
+            "experience_match": int(result.get("experience_match", 0)),
+            "preferences_match": int(result.get("preferences_match", 0)),
+            "matched_skills": result.get("matched_skills", [])[:10],
+            "missing_skills": result.get("missing_skills", [])[:5],
+            "reason": result.get("reason", ""),
+        }
+    except Exception as e:
+        logger.warning(f"[Scorer] AI failed '{title}': {type(e).__name__}: {e}")
+        return _fallback_score(job, user_profile)
 
+
+def score_jobs_batch(jobs: List[Dict], user_profile: Dict, max_workers: int = 8) -> List[Dict]:
+    """AI-score a list of jobs in parallel. Returns jobs with match_score added."""
+    if not jobs:
+        return jobs
+
+    results = [None] * len(jobs)
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {
+            executor.submit(calculate_match_score, job, user_profile): idx
+            for idx, job in enumerate(jobs)
+        }
+        for future in as_completed(futures):
+            idx = futures[future]
+            try:
+                results[idx] = future.result()
+            except Exception as e:
+                logger.warning(f"[Scorer] Batch item {idx} failed: {e}")
+                results[idx] = _fallback_score(jobs[idx], user_profile)
+
+    scored = []
+    for job, score_result in zip(jobs, results):
+        if score_result is None:
+            score_result = _fallback_score(job, user_profile)
+        job_copy = dict(job)
+        job_copy["match_score"] = score_result["match_score"]
+        job_copy["match_details"] = score_result
+        scored.append(job_copy)
+
+    return scored
+
+
+def _fallback_score(job: Dict, user_profile: Dict) -> Dict[str, Any]:
+    """Keyword fallback when AI fails. Conservative."""
+    user_skills = {s.lower().strip() for s in user_profile.get("skills", [])}
+    desc = (job.get("description", "") or job.get("description_text", "") or "").lower()
+    job_skills = {s for s in _TECH_SKILLS if s in desc}
+    matched = list(job_skills.intersection(user_skills))
+    score = min(int((len(matched) / max(len(job_skills), 1)) * 65), 65) if job_skills else 15
     return {
-        "match_score": final_score,
-        "skills_match": round(skills_score),
-        "experience_match": round(experience_score),
-        "preferences_match": round(preferences_score),
-        "matched_skills": matched[:10],
-        "missing_skills": missing[:5],
-        "job_category": job_category,
-        "user_category": user_category,
-        "blockers": list(blockers.keys()),
+        "match_score": score,
+        "skills_match": score,
+        "experience_match": 40,
+        "preferences_match": 40,
+        "matched_skills": matched[:5],
+        "missing_skills": [],
+        "reason": "Keyword fallback (AI unavailable)",
     }
