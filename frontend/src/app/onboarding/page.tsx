@@ -13,6 +13,7 @@ import {
   ArrowRight,
   Briefcase,
   MapPin,
+  Zap,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -41,6 +42,8 @@ export default function OnboardingPage() {
   const [step, setStep] = useState<OnboardingStep>(1);
   const [uploading, setUploading] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [matchCount, setMatchCount] = useState<number | null>(null);
+  const [fetchingMatches, setFetchingMatches] = useState(false);
   const [preferences, setPreferences] = useState({
     job_titles: [] as string[],
     remote_preference: "remote",
@@ -70,8 +73,28 @@ export default function OnboardingPage() {
       if (data.completed) {
         router.push("/jobs");
       } else {
-        setStep(data.step);
+        setStep(data.step as OnboardingStep);
       }
+    }
+  };
+
+  const fetchMatchCount = async () => {
+    const token = getToken();
+    if (!token) return;
+    setFetchingMatches(true);
+    try {
+      const res = await fetch(
+        `${API}/matching/jobs?limit=1&min_match_score=40&days=30`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setMatchCount(data.matched_count ?? data.total ?? 0);
+      }
+    } catch {
+      setMatchCount(0);
+    } finally {
+      setFetchingMatches(false);
     }
   };
 
@@ -98,10 +121,10 @@ export default function OnboardingPage() {
         setStep(3);
         toast.success("Resume parsed successfully! ✅");
       } else {
-        toast.error("Failed to parse resume");
+        toast.error("Failed to parse resume. Try a different file.");
       }
-    } catch (error) {
-      toast.error("Upload failed");
+    } catch {
+      toast.error("Upload failed. Check your connection.");
     } finally {
       setUploading(false);
     }
@@ -137,8 +160,10 @@ export default function OnboardingPage() {
     });
 
     if (res.ok) {
-      setStep(5);
       toast.success("Preferences saved!");
+      // Fetch real match count before showing step 5
+      await fetchMatchCount();
+      setStep(5);
     } else {
       toast.error("Failed to save preferences");
     }
@@ -155,21 +180,20 @@ export default function OnboardingPage() {
     router.push("/jobs");
   };
 
-  const progress = (step / 6) * 100;
+  const progress = ((step - 1) / 5) * 100;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 flex items-center justify-center p-6">
       <div className="w-full max-w-2xl">
-        {/* Progress Bar */}
+        {/* Progress */}
         <div className="mb-8">
           <div className="flex justify-between text-sm text-gray-400 mb-2">
-            <span>Step {step} of 6</span>
+            <span>Step {step} of 5</span>
             <span>{Math.round(progress)}% Complete</span>
           </div>
           <Progress value={progress} className="h-2" />
         </div>
 
-        {/* Step Content */}
         <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 p-8 md:p-12">
           {/* STEP 1: Welcome */}
           {step === 1 && (
@@ -178,11 +202,27 @@ export default function OnboardingPage() {
                 <Sparkles className="w-12 h-12 text-white" />
               </div>
               <h1 className="text-4xl font-black text-white">
-                Welcome to MyJobPhase! 🎉
+                Welcome to MyJobPhase 🎉
               </h1>
               <p className="text-xl text-gray-300">
-                Let&apos;s get you set up in 60 seconds
+                Apply to 10 jobs in the time it takes to apply to one.
+                <br />
+                Let&apos;s get you set up in 60 seconds.
               </p>
+              <div className="grid grid-cols-3 gap-4 py-4">
+                {[
+                  { icon: Upload, label: "Upload CV" },
+                  { icon: Target, label: "Get Matched" },
+                  { icon: Zap, label: "Quick Apply" },
+                ].map(({ icon: Icon, label }) => (
+                  <div key={label} className="text-center space-y-2">
+                    <div className="inline-flex p-3 rounded-xl bg-white/10 border border-white/10">
+                      <Icon className="w-5 h-5 text-blue-400" />
+                    </div>
+                    <p className="text-sm text-gray-300">{label}</p>
+                  </div>
+                ))}
+              </div>
               <Button
                 size="lg"
                 onClick={() => setStep(2)}
@@ -201,7 +241,8 @@ export default function OnboardingPage() {
                   Upload Your Resume
                 </h2>
                 <p className="text-gray-300">
-                  We&apos;ll analyze it to match you with the best jobs
+                  AI extracts your skills and experience automatically. Takes
+                  about 10 seconds.
                 </p>
               </div>
 
@@ -214,26 +255,29 @@ export default function OnboardingPage() {
                   disabled={uploading}
                 />
                 <div className="border-2 border-dashed border-white/30 rounded-xl p-12 text-center hover:border-blue-500 hover:bg-blue-500/10 transition">
-                  <Upload className="w-16 h-16 text-blue-400 mx-auto mb-4" />
-                  <p className="text-white font-medium text-lg mb-2">
-                    {uploading
-                      ? "Analyzing resume..."
-                      : "Click to upload or drag and drop"}
-                  </p>
-                  <p className="text-gray-400 text-sm">
-                    PDF, DOC, or DOCX (Max 10MB)
-                  </p>
+                  {uploading ? (
+                    <>
+                      <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4" />
+                      <p className="text-white font-medium text-lg mb-1">
+                        Parsing your resume...
+                      </p>
+                      <p className="text-gray-400 text-sm">
+                        Extracting skills, experience, and education
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-16 h-16 text-blue-400 mx-auto mb-4" />
+                      <p className="text-white font-medium text-lg mb-2">
+                        Click to upload or drag and drop
+                      </p>
+                      <p className="text-gray-400 text-sm">
+                        PDF, DOC, or DOCX · Max 10MB
+                      </p>
+                    </>
+                  )}
                 </div>
               </label>
-
-              {uploading && (
-                <div className="text-center">
-                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-                  <p className="text-gray-300 mt-3">
-                    Parsing your resume with AI...
-                  </p>
-                </div>
-              )}
             </div>
           )}
 
@@ -242,22 +286,25 @@ export default function OnboardingPage() {
             <div className="space-y-6">
               <div className="text-center">
                 <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto mb-4" />
-                <h2 className="text-3xl font-bold text-white mb-3">
-                  Here&apos;s What We Found
+                <h2 className="text-3xl font-bold text-white mb-2">
+                  Resume Parsed ✅
                 </h2>
+                <p className="text-gray-300">Here&apos;s what we extracted</p>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div className="bg-white/5 rounded-lg p-4 border border-white/10">
-                  <p className="text-sm text-gray-400 mb-1">Full Name</p>
+                  <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">
+                    Name
+                  </p>
                   <p className="text-white font-medium text-lg">
                     {profile.full_name}
                   </p>
                 </div>
 
                 <div className="bg-white/5 rounded-lg p-4 border border-white/10">
-                  <p className="text-sm text-gray-400 mb-2">
-                    Skills ({profile.total_skills} total)
+                  <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">
+                    Skills detected ({profile.total_skills})
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {profile.skills.map((skill, i) => (
@@ -276,9 +323,12 @@ export default function OnboardingPage() {
                 </div>
 
                 <div className="bg-white/5 rounded-lg p-4 border border-white/10">
-                  <p className="text-sm text-gray-400 mb-1">Experience</p>
+                  <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">
+                    Experience
+                  </p>
                   <p className="text-white font-medium">
-                    {profile.experience_years} positions
+                    {profile.experience_years} position
+                    {profile.experience_years !== 1 ? "s" : ""}
                   </p>
                 </div>
               </div>
@@ -308,26 +358,29 @@ export default function OnboardingPage() {
                   What Are You Looking For?
                 </h2>
                 <p className="text-gray-300">
-                  Help us find the perfect jobs for you
+                  This helps us rank jobs by relevance to you
                 </p>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-5">
                 {/* Job Titles */}
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Job Titles (Add up to 5)
+                    Target Job Titles
+                    <span className="text-gray-500 ml-1 font-normal">
+                      (add up to 5)
+                    </span>
                   </label>
                   <div className="flex flex-col sm:flex-row gap-2 mb-3">
                     <input
                       type="text"
                       value={jobTitleInput}
                       onChange={(e) => setJobTitleInput(e.target.value)}
-                      onKeyPress={(e) =>
+                      onKeyDown={(e) =>
                         e.key === "Enter" && handleAddJobTitle()
                       }
-                      placeholder="e.g. Software Engineer"
-                      className="flex-1 px-4 py-3 rounded-lg bg-white/5 border border-white/10 text-white placeholder:text-gray-500 min-h-[48px]"
+                      placeholder="e.g. Data Engineer, Full Stack Developer"
+                      className="flex-1 px-4 py-3 rounded-lg bg-white/5 border border-white/10 text-white placeholder:text-gray-500 focus:outline-none focus:border-blue-500/50"
                       disabled={preferences.job_titles.length >= 5}
                     />
                     <Button
@@ -336,25 +389,27 @@ export default function OnboardingPage() {
                         !jobTitleInput.trim() ||
                         preferences.job_titles.length >= 5
                       }
-                      className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 min-h-[48px]">
-                      Add Title
+                      className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700">
+                      Add
                     </Button>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {preferences.job_titles.map((title, i) => (
-                      <span
-                        key={i}
-                        className="px-3 py-2 rounded-lg bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center gap-2">
-                        <Briefcase className="w-4 h-4" />
-                        {title}
-                        <button
-                          onClick={() => handleRemoveJobTitle(i)}
-                          className="text-blue-400 hover:text-blue-300">
-                          ×
-                        </button>
-                      </span>
-                    ))}
-                  </div>
+                  {preferences.job_titles.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {preferences.job_titles.map((title, i) => (
+                        <span
+                          key={i}
+                          className="px-3 py-2 rounded-lg bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center gap-2 text-sm">
+                          <Briefcase className="w-3.5 h-3.5" />
+                          {title}
+                          <button
+                            onClick={() => handleRemoveJobTitle(i)}
+                            className="text-blue-400 hover:text-white ml-1">
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Remote Preference */}
@@ -372,7 +427,7 @@ export default function OnboardingPage() {
                             remote_preference: pref,
                           })
                         }
-                        className={`px-4 py-3 rounded-lg border transition ${
+                        className={`px-4 py-3 rounded-lg border transition text-sm font-medium ${
                           preferences.remote_preference === pref
                             ? "bg-blue-500/20 border-blue-500 text-blue-400"
                             : "bg-white/5 border-white/10 text-gray-300 hover:bg-white/10"
@@ -386,10 +441,13 @@ export default function OnboardingPage() {
                 {/* Location */}
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Preferred Location (Optional)
+                    Preferred Location
+                    <span className="text-gray-500 ml-1 font-normal">
+                      (optional)
+                    </span>
                   </label>
                   <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <input
                       type="text"
                       value={preferences.location}
@@ -399,8 +457,8 @@ export default function OnboardingPage() {
                           location: e.target.value,
                         })
                       }
-                      placeholder="e.g. San Francisco, CA"
-                      className="w-full pl-11 pr-4 py-3 rounded-lg bg-white/5 border border-white/10 text-white placeholder:text-gray-500"
+                      placeholder="e.g. Europe, Remote Worldwide, UK"
+                      className="w-full pl-10 pr-4 py-3 rounded-lg bg-white/5 border border-white/10 text-white placeholder:text-gray-500 focus:outline-none focus:border-blue-500/50"
                     />
                   </div>
                 </div>
@@ -410,55 +468,75 @@ export default function OnboardingPage() {
                 onClick={handleSavePreferences}
                 disabled={preferences.job_titles.length === 0}
                 className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 py-6 text-lg">
-                Save Preferences
+                {fetchingMatches ? "Finding matches..." : "Save & Find My Jobs"}
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
+
+              {preferences.job_titles.length === 0 && (
+                <p className="text-center text-sm text-gray-500">
+                  Add at least one job title to continue
+                </p>
+              )}
             </div>
           )}
 
-          {/* STEP 5: Matched Jobs Preview */}
+          {/* STEP 5: Real Match Count + Go */}
           {step === 5 && (
             <div className="space-y-6">
               <div className="text-center">
-                <Target className="w-16 h-16 text-green-500 mx-auto mb-4" />
-                <h2 className="text-3xl font-bold text-white mb-3">
-                  We Found Jobs For You! 🎯
+                <div className="inline-flex p-4 rounded-2xl bg-green-500/20 border border-green-500/20 mb-4">
+                  <Target className="w-12 h-12 text-green-400" />
+                </div>
+                <h2 className="text-3xl font-bold text-white mb-2">
+                  You&apos;re ready 🎯
                 </h2>
                 <p className="text-gray-300">
-                  Based on your profile, we matched you with high-quality
-                  opportunities
+                  Based on your profile, we found jobs waiting for you
                 </p>
               </div>
 
-              <div className="bg-gradient-to-br from-green-500/10 to-blue-500/10 rounded-xl border border-green-500/20 p-6 text-center">
-                <p className="text-5xl font-black text-white mb-2">47</p>
-                <p className="text-gray-300">Matched Jobs Ready to Browse</p>
+              {/* Real match count */}
+              <div className="bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-xl border border-blue-500/20 p-8 text-center">
+                {fetchingMatches ? (
+                  <div className="space-y-2">
+                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400" />
+                    <p className="text-gray-400 text-sm">
+                      Calculating matches...
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-6xl font-black text-white mb-1">
+                      {matchCount !== null ? matchCount.toLocaleString() : "—"}
+                    </p>
+                    <p className="text-gray-300">
+                      jobs matched to your profile
+                    </p>
+                  </>
+                )}
               </div>
 
-              <div className="space-y-3">
-                <p className="text-gray-300 font-medium">
-                  What you can do next:
-                </p>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-3 text-gray-300">
-                    <CheckCircle2 className="w-5 h-5 text-green-500" />
-                    Browse 3,400+ remote jobs
+              <div className="space-y-2">
+                {[
+                  "Jobs are ranked by match score — best fits first",
+                  "Quick Apply tailors your resume for each job in seconds",
+                  "Every application is tracked automatically",
+                ].map((item) => (
+                  <div
+                    key={item}
+                    className="flex items-start gap-3 text-gray-300 text-sm">
+                    <CheckCircle2 className="w-4 h-4 text-green-400 mt-0.5 shrink-0" />
+                    {item}
                   </div>
-                  <div className="flex items-center gap-3 text-gray-300">
-                    <CheckCircle2 className="w-5 h-5 text-green-500" />
-                    Try Quick Apply (AI tailors resume in 3 sec)
-                  </div>
-                  <div className="flex items-center gap-3 text-gray-300">
-                    <CheckCircle2 className="w-5 h-5 text-green-500" />
-                    Track applications in one place
-                  </div>
-                </div>
+                ))}
               </div>
 
               <Button
                 onClick={handleComplete}
-                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 py-6 text-lg">
-                Start Browsing Jobs 🚀
+                disabled={fetchingMatches}
+                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 py-6 text-lg font-bold">
+                Browse My Matched Jobs
+                <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </div>
           )}
