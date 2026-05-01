@@ -38,10 +38,7 @@ scheduler: AsyncIOScheduler | None = None
 async def _deferred_ingest(delay_seconds: int = 15):
     """
     FIX: Don't run ingest immediately on startup.
-    Waiting 15s lets the app fully initialize (DB pool warm,
-    all routers registered) before hammering the DB with bulk inserts.
-    Ingest running at t=0 was competing with every login/signup
-    query during the critical first-use window.
+    Waiting 15s lets the app fully initialize before bulk inserts.
     """
     await asyncio.sleep(delay_seconds)
     logger.info("🔄 Starting deferred ingest...")
@@ -58,18 +55,33 @@ async def lifespan(app: FastAPI):
         ensure_indexes(conn)
         logger.info("📊 Database indexes ready")
 
-    # FIX: deferred ingest — app is fully ready before scraping starts.
-    # Previously this fired at t=0, competing with login/signup queries.
     asyncio.create_task(_deferred_ingest(delay_seconds=15))
 
     global scheduler
     scheduler = AsyncIOScheduler()
 
-    # Recurring ingest — every 12h is enough for a job board.
-    # Was 6h — more frequent = more DB contention during active hours.
+    # ── Ingest: every 12 hours ────────────────────────────────────────
     scheduler.add_job(run_ingest_once, trigger="interval", hours=12)
 
-    # Follow-up reminders (daily at 9 AM)
+    # ── Score jobs for active users: every 6 hours ────────────────────
+    # Runs as a sync function in APScheduler's thread pool.
+    # Starts 1 hour after startup so ingest has time to complete first.
+    # time.sleep(1.0) inside the job keeps Groq calls under TPM limits.
+    # max_instances=1 ensures it never runs twice simultaneously.
+    from app.services.matching.scorer_job import run_scoring_job
+    from datetime import datetime, timedelta
+
+    scheduler.add_job(
+        run_scoring_job,
+        trigger="interval",
+        hours=6,
+        next_run_time=datetime.now() + timedelta(hours=1),
+        id="score_users",
+        max_instances=1,
+        misfire_grace_time=3600,
+    )
+
+    # ── Follow-up reminders: daily at 9 AM ───────────────────────────
     from app.services.email.tasks import check_followup_reminders
     from app.core.db import SessionLocal
 
@@ -82,7 +94,7 @@ async def lifespan(app: FastAPI):
 
     scheduler.add_job(run_followup_check, "cron", hour=9, minute=0)
 
-    # Weekly digest (Sundays at 10 AM)
+    # ── Weekly digest: Sundays at 10 AM ──────────────────────────────
     from app.services.email.tasks import send_weekly_digests
 
     def run_weekly_digest():
@@ -93,10 +105,11 @@ async def lifespan(app: FastAPI):
             db.close()
 
     scheduler.add_job(run_weekly_digest, "cron", day_of_week="sun", hour=10, minute=0)
-    scheduler.start()
-    logger.info("✅ Scheduler started")
 
-    yield  # ── App running ──────────────────────────────────────────
+    scheduler.start()
+    logger.info("✅ Scheduler started — ingest:12h | scoring:6h | followup:9am | digest:Sunday")
+
+    yield
 
     # ── Shutdown ─────────────────────────────────────────────────────
     logger.info("🛑 Shutting down...")
@@ -230,4 +243,3 @@ def admin_status(db: Session = Depends(get_db)):
         "sources": {"greenhouse": gh, "lever": lever, "ashby": ashby},
         "counts": {"total": total, "last_7d": recent_7d},
     }
-

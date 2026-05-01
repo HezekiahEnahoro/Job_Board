@@ -1,29 +1,19 @@
 """
 app/services/matching/matcher.py
 
-Two-stage matching:
+Reads pre-computed scores from user_job_scores table.
+No live AI calls at query time — instant response.
 
-Stage 1 — Keyword pre-filter (instant, free):
-  Score all DB jobs with keyword_prescore().
-  This filters 3000 jobs down to ~50-100 tech-relevant candidates.
-  Eliminates non-tech roles, language-blocked jobs, internships.
-
-Stage 2 — AI scoring (accurate, ~4-6s for 25 jobs in parallel):
-  AI-score only the 25 jobs on the current page.
-  Groq llama-3.1-8b-instant, 8 parallel workers.
-
-Result:
-  - "All Jobs" page load: ~5s (25 AI calls in parallel)
-  - "90%+ Match" filter: ~6s (pre-filter narrows pool, AI scores page)
-  - Match scores are accurate — not keyword guesses
-  - Filter buttons actually work — pre-filter ensures only good candidates reach AI
+For new users with no scores yet → keyword fallback (fast, good enough).
+Scores are pre-computed by the Airflow DAG after each ingest run.
 """
 
 from typing import List, Dict, Any
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 from app.core import crud
 from app.services.profile.models import UserProfile
-from .scorer import keyword_prescore, score_jobs_batch, _fallback_score
+from .scorer import keyword_prescore, _fallback_score
 
 
 def job_to_dict(job) -> Dict[str, Any]:
@@ -38,7 +28,7 @@ def job_to_dict(job) -> Dict[str, Any]:
         "posted_at": job.posted_at.isoformat() if job.posted_at else None,
         "apply_url": job.apply_url,
         "description_text": job.description_text,
-        "description": job.description_text,  # scorer expects this key
+        "description": job.description_text,
         "scraped_at": job.scraped_at.isoformat() if job.scraped_at else None,
     }
 
@@ -54,12 +44,13 @@ def get_matched_jobs(
     """
     Get jobs with match scores for a user.
 
-    Without profile: returns plain job list, no scores.
-    With profile: two-stage keyword→AI scoring.
+    Primary: reads from user_job_scores (pre-computed by Airflow DAG)
+    Fallback: keyword scoring for users with no pre-computed scores yet
     """
     user_profile = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
 
     if not user_profile:
+        # No profile — return plain jobs, no scores
         jobs_data = crud.list_jobs_paginated(db, limit=limit, offset=offset, **filters)
         jobs_list = jobs_data.get("jobs") or jobs_data.get("items", [])
         jobs_dicts = [job_to_dict(j) for j in jobs_list]
@@ -80,72 +71,200 @@ def get_matched_jobs(
         "preferences": user_profile.preferences or {},
     }
 
-    # ── Stage 1: Fetch a large pool and keyword pre-filter ────────────
-    # Fetch 500 recent jobs — enough to find good candidates after filtering
-    POOL_SIZE = 500
-    jobs_data = crud.list_jobs_paginated(db, limit=POOL_SIZE, offset=0, **filters)
+    # Check if user has pre-computed scores
+    score_count = db.execute(
+        text("SELECT COUNT(*) FROM user_job_scores WHERE user_id = :uid"),
+        {"uid": user_id}
+    ).scalar() or 0
+
+    if score_count > 0:
+        # ── Primary path: read pre-computed scores from DB ────────────
+        return _get_from_precomputed(db, user_id, min_match_score, limit, offset, **filters)
+    else:
+        # ── Fallback: keyword scoring for new users ───────────────────
+        # Scores will be pre-computed on next DAG run (within 6 hours)
+        return _get_with_keyword_fallback(db, user_id, profile_dict, min_match_score, limit, offset, **filters)
+
+
+def _get_from_precomputed(
+    db: Session,
+    user_id: int,
+    min_match_score: int,
+    limit: int,
+    offset: int,
+    **filters
+) -> Dict[str, Any]:
+    """Read jobs + scores from pre-computed user_job_scores table."""
+
+    # Build base query joining jobs with pre-computed scores
+    # Apply search/skill/location filters at DB level
+    q = filters.get("q")
+    skill = filters.get("skill")
+    location = filters.get("location")
+    remote = filters.get("remote")
+    days = filters.get("days", 30)
+
+    where_clauses = [
+        "ujs.user_id = :user_id",
+        "ujs.match_score >= :min_score",
+        "j.scraped_at >= NOW() - INTERVAL ':days days'",
+    ]
+    params: Dict[str, Any] = {
+        "user_id": user_id,
+        "min_score": min_match_score,
+        "days": days,
+        "limit": limit,
+        "offset": offset,
+    }
+
+    if q:
+        where_clauses.append(
+            "(LOWER(j.title) LIKE :q OR LOWER(j.company) LIKE :q)"
+        )
+        params["q"] = f"%{q.lower()}%"
+
+    if skill:
+        where_clauses.append("LOWER(j.description_text) LIKE :skill")
+        params["skill"] = f"%{skill.lower()}%"
+
+    if location:
+        where_clauses.append("LOWER(j.location) LIKE :location")
+        params["location"] = f"%{location.lower()}%"
+
+    if remote is not None:
+        where_clauses.append("j.remote_flag = :remote")
+        params["remote"] = remote
+
+    where_sql = " AND ".join(where_clauses)
+
+    # Get total count
+    count_sql = f"""
+        SELECT COUNT(*)
+        FROM user_job_scores ujs
+        JOIN jobs j ON j.id = ujs.job_id
+        WHERE {where_sql}
+    """
+    # Use simpler date filter without parameter interpolation issue
+    count_sql = count_sql.replace(
+        "j.scraped_at >= NOW() - INTERVAL ':days days'",
+        f"j.scraped_at >= NOW() - INTERVAL '{days} days'"
+    )
+    del params["days"]
+
+    total_matched = db.execute(text(count_sql), params).scalar() or 0
+
+    # Get page
+    page_sql = f"""
+        SELECT
+            j.id, j.title, j.company, j.location, j.remote_flag,
+            j.posted_at, j.apply_url, j.description_text, j.scraped_at,
+            ujs.match_score, ujs.skills_match, ujs.experience_match,
+            ujs.preferences_match, ujs.matched_skills, ujs.missing_skills,
+            ujs.reason
+        FROM user_job_scores ujs
+        JOIN jobs j ON j.id = ujs.job_id
+        WHERE {where_sql}
+        ORDER BY ujs.match_score DESC, j.posted_at DESC NULLS LAST
+        LIMIT :limit OFFSET :offset
+    """
+    page_sql = page_sql.replace(
+        "j.scraped_at >= NOW() - INTERVAL ':days days'",
+        f"j.scraped_at >= NOW() - INTERVAL '{days} days'"
+    )
+
+    rows = db.execute(text(page_sql), params).fetchall()
+
+    jobs = []
+    for row in rows:
+        matched_skills = row[14] if row[14] else []
+        missing_skills = row[15] if row[15] else []
+
+        # JSONB comes back as list already from psycopg2
+        if isinstance(matched_skills, str):
+            import json
+            matched_skills = json.loads(matched_skills)
+        if isinstance(missing_skills, str):
+            import json
+            missing_skills = json.loads(missing_skills)
+
+        job = {
+            "id": row[0],
+            "title": row[1],
+            "company": row[2],
+            "location": row[3],
+            "remote_flag": row[4],
+            "posted_at": row[5].isoformat() if row[5] else None,
+            "apply_url": row[6],
+            "description_text": row[7],
+            "scraped_at": row[8].isoformat() if row[8] else None,
+            "match_score": row[9],
+            "match_details": {
+                "match_score": row[9],
+                "skills_match": row[10],
+                "experience_match": row[11],
+                "preferences_match": row[12],
+                "matched_skills": matched_skills,
+                "missing_skills": missing_skills,
+                "reason": row[16] if len(row) > 16 else "",
+            },
+        }
+        jobs.append(job)
+
+    # Total jobs in DB (for pagination display)
+    total_in_db = db.execute(
+        text("SELECT COUNT(*) FROM jobs WHERE scraped_at >= NOW() - INTERVAL '30 days'")
+    ).scalar() or 0
+
+    return {
+        "jobs": jobs,
+        "total": total_in_db,
+        "matched_count": total_matched,
+        "limit": limit,
+        "offset": offset,
+    }
+
+
+def _get_with_keyword_fallback(
+    db: Session,
+    user_id: int,
+    profile_dict: Dict,
+    min_match_score: int,
+    limit: int,
+    offset: int,
+    **filters
+) -> Dict[str, Any]:
+    """
+    Keyword scoring fallback for new users.
+    Fast — no AI calls. Scores are rough but better than nothing.
+    Will be replaced by pre-computed AI scores after next DAG run.
+    """
+    jobs_data = crud.list_jobs_paginated(db, limit=200, offset=0, **filters)
     jobs_list = jobs_data.get("jobs") or jobs_data.get("items", [])
     all_jobs = [job_to_dict(j) for j in jobs_list]
-    total_in_db = jobs_data.get("total", 0)
 
-    # Keyword pre-score every job (fast — no API calls)
-    # Use a lower threshold than min_match_score to avoid excluding
-    # jobs the AI might score higher than keywords estimate
-    keyword_threshold = max(0, min_match_score - 30) if min_match_score > 0 else 0
-
-    prescored = []
+    scored = []
     for job in all_jobs:
         ks = keyword_prescore(job, profile_dict)
-        if ks >= keyword_threshold:
-            job["_keyword_score"] = ks
-            prescored.append(job)
+        if ks >= min_match_score:
+            fallback = _fallback_score(job, profile_dict)
+            fallback["match_score"] = ks  # use keyword prescore as the displayed score
+            job["match_score"] = ks
+            job["match_details"] = fallback
+            scored.append(job)
 
-    # Sort by keyword score so best candidates are first
-    prescored.sort(key=lambda x: x.get("_keyword_score", 0), reverse=True)
+    scored.sort(key=lambda x: x.get("match_score", 0), reverse=True)
+    total_matched = len(scored)
+    page = scored[offset: offset + limit]
 
-    # ── Stage 2: AI-score + paginate ─────────────────────────────────
-    if min_match_score == 0:
-        # No score filter — just show current page with AI scores
-        page_jobs = prescored[offset: offset + limit]
-        if not page_jobs:
-            # Fallback: page beyond prescored pool, fetch directly
-            raw = crud.list_jobs_paginated(db, limit=limit, offset=offset, **filters)
-            raw_list = raw.get("jobs") or raw.get("items", [])
-            page_jobs = [job_to_dict(j) for j in raw_list]
-
-        ai_scored = score_jobs_batch(page_jobs, profile_dict, max_workers=8)
-
-        return {
-            "jobs": ai_scored,
-            "total": total_in_db,
-            "matched_count": len(prescored),
-            "limit": limit,
-            "offset": offset,
-        }
-
-    else:
-        # Score filter active — AI-score ALL prescored candidates, filter, then paginate
-        # Cap at 150 to avoid too many API calls
-        candidates = prescored[:150]
-
-        ai_scored_all = score_jobs_batch(candidates, profile_dict, max_workers=10)
-
-        # Filter by actual AI score (not keyword estimate)
-        filtered = [j for j in ai_scored_all if j.get("match_score", 0) >= min_match_score]
-        filtered.sort(key=lambda x: x.get("match_score", 0), reverse=True)
-
-        total_matched = len(filtered)
-        page = filtered[offset: offset + limit]
-
-        return {
-            "jobs": page,
-            "total": total_in_db,
-            "matched_count": total_matched,
-            "limit": limit,
-            "offset": offset,
-        }
+    return {
+        "jobs": page,
+        "total": jobs_data.get("total", 0),
+        "matched_count": total_matched,
+        "limit": limit,
+        "offset": offset,
+    }
 
 
 def get_top_matches(db: Session, user_id: int, top_k: int = 10) -> List[Dict[str, Any]]:
-    result = get_matched_jobs(db, user_id, min_match_score=70, limit=top_k)
+    result = get_matched_jobs(db, user_id, min_match_score=60, limit=top_k)
     return result["jobs"]
