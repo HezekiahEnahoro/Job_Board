@@ -185,6 +185,18 @@ def calculate_experience_match(
     No artificial base score — starts at 0.
     """
 
+    # Seniority mismatch — cap internships/junior roles for experienced candidates
+    job_text_lower = f"{job_title} {job_description[:300]}".lower()
+    is_internship = any(w in job_text_lower for w in [
+        "internship", "intern", "praktikum", "werkstudent", "werkstudentin",
+        "trainee", "apprentice", "entry level", "entry-level", "graduate role",
+        "no experience required", "recent graduate",
+    ])
+    has_real_experience = len(user_experience) >= 2
+
+    if is_internship and has_real_experience:
+        return 15.0  # Experienced candidate — internships are irrelevant
+
     # Hard penalty for role category mismatch
     COMPATIBLE = {
         "engineering": {"engineering", "data"},

@@ -447,33 +447,17 @@ export default function JobsTable() {
                   <div className="relative rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl p-4 sm:p-6 group-hover/card:border-white/20 transition">
                     {/* Match Score Badge - Responsive */}
                     {job.match_score !== undefined && job.match_score > 0 && (
-                      <>
-                        {/* MOBILE ONLY (< 640px): Badge above content - FROM DOCUMENT 6 */}
-                        <div className="flex justify-end mb-3 sm:hidden z-10">
-                          <div
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full backdrop-blur-xl border ${getMatchBadgeClass(
-                              job.match_score,
-                            )}`}>
-                            <Sparkles className="h-3 w-3 shrink-0" />
-                            <span className="font-bold text-xs whitespace-nowrap">
-                              {job.match_score}% Match
-                            </span>
-                          </div>
+                      <div className="flex justify-end mb-3">
+                        <div
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border ${getMatchBadgeClass(
+                            job.match_score,
+                          )}`}>
+                          <Sparkles className="h-3.5 w-3.5 shrink-0" />
+                          <span className="font-bold text-xs whitespace-nowrap">
+                            {job.match_score}% Match
+                          </span>
                         </div>
-
-                        {/* TABLET & DESKTOP (≥ 640px): Badge absolute top-right - FROM DOCUMENT 7 */}
-                        <div className="hidden sm:block absolute top-4 right-4 z-10">
-                          <div
-                            className={`flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-xl border ${getMatchBadgeClass(
-                              job.match_score,
-                            )}`}>
-                            <Sparkles className="h-4 w-4" />
-                            <span className="font-bold text-sm">
-                              {job.match_score}% Match
-                            </span>
-                          </div>
-                        </div>
-                      </>
+                      </div>
                     )}
 
                     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -549,7 +533,7 @@ export default function JobsTable() {
                         {hasProfile && job.apply_url && (
                           <>
                             <QuickApply job={job} />
-                            <PrepInterview job={job} /> 
+                            <PrepInterview job={job} />
                           </>
                         )}
                         <Button
