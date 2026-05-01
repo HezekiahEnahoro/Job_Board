@@ -15,6 +15,8 @@ ROLE_CATEGORIES = {
         "ios developer", "android developer", "python developer",
         "javascript developer", "typescript developer", "rust developer",
         "golang developer", "java developer",
+        # German equivalents
+        "softwareentwickler", "entwickler", "programmierer",
     ],
     "data": [
         "data analyst", "data scientist", "analytics engineer",
@@ -24,6 +26,8 @@ ROLE_CATEGORIES = {
     "product": [
         "product manager", "product owner", "program manager",
         "project manager", "scrum master",
+        # German
+        "projektmanager", "projektleiter",
     ],
     "design": [
         "ux designer", "ui designer", "product designer", "graphic designer",
@@ -34,16 +38,22 @@ ROLE_CATEGORIES = {
         "seo", "sem", "social media", "brand manager", "copywriter",
         "content creator", "digital marketing", "performance marketing",
         "influencer marketing",
+        # German
+        "marketing", "redakteur", "texter",
     ],
     "sales": [
         "sales", "account executive", "business development",
         "account manager", "sales manager", "sales rep",
+        # German
+        "vertrieb", "verkauf", "außendienst",
     ],
     "customer_success": [
         "customer success", "client success", "customer support",
         "customer service", "account management", "onboarding specialist",
         "client onboarding", "technical support", "support engineer",
         "help desk",
+        # German
+        "kundenbetreuer", "kundenservice", "kundensupport",
     ],
     "operations": [
         "operations manager", "operations analyst", "chief of staff",
@@ -51,11 +61,25 @@ ROLE_CATEGORIES = {
     ],
     "finance": [
         "financial analyst", "accountant", "controller", "cfo",
-        "finance manager", "bookkeeper",
+        "finance manager", "bookkeeper", "accounting",
+        # German — critical additions
+        "buchhaltung", "buchhalter", "buchhalterin", "finanzbuchhalter",
+        "lohnbuchhalter", "steuerfachangestellte", "bilanzbuchhalter",
+        "rechnungswesen", "controlling", "finanzmanager",
+        "sachbearbeiter buchhaltung", "sachbearbeitung",
     ],
     "hr": [
         "recruiter", "talent acquisition", "hr manager", "people ops",
         "human resources",
+        # German
+        "personalreferent", "personalwesen", "personalbeschaffung",
+    ],
+    "admin": [
+        "office manager", "administrative assistant", "secretary",
+        "executive assistant", "receptionist", "office coordinator",
+        # German
+        "büromanager", "bürokaufmann", "bürokauffrau", "assistenz",
+        "verwaltung", "sachbearbeiter", "sekretär", "sekretärin",
     ],
 }
 
@@ -185,17 +209,26 @@ def calculate_experience_match(
     No artificial base score — starts at 0.
     """
 
-    # Seniority mismatch — cap internships/junior roles for experienced candidates
+
+    # Seniority mismatch — cap internships, minijobs, student roles for experienced candidates
     job_text_lower = f"{job_title} {job_description[:300]}".lower()
-    is_internship = any(w in job_text_lower for w in [
-        "internship", "intern", "praktikum", "werkstudent", "werkstudentin",
-        "trainee", "apprentice", "entry level", "entry-level", "graduate role",
+
+    is_junior_role = any(w in job_text_lower for w in [
+        # English
+        "internship", "intern", "trainee", "apprentice",
+        "entry level", "entry-level", "graduate role",
         "no experience required", "recent graduate",
+        # German
+        "praktikum", "praktikant", "praktikantin",
+        "werkstudent", "werkstudentin",
+        "minijob", "mini-job", "mini job",
+        "aushilfe", "studentenjob", "nebenjob",
+        "teilzeit student", "part-time student",
     ])
     has_real_experience = len(user_experience) >= 2
 
-    if is_internship and has_real_experience:
-        return 15.0  # Experienced candidate — internships are irrelevant
+    if is_junior_role and has_real_experience:
+        return 12.0  # Experienced candidate — junior/minijob roles are irrelevant
 
     # Hard penalty for role category mismatch
     COMPATIBLE = {
