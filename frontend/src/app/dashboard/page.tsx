@@ -208,7 +208,31 @@ function DashboardContent() {
     setNoteText("");
     await loadApps();
   };
+  const openAuthenticatedUrl = async (url: string) => {
+    const token = getToken();
+    if (!token) return;
 
+    try {
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) {
+        toast.error("Failed to load document");
+        return;
+      }
+
+      const html = await res.text();
+      const blob = new Blob([html], { type: "text/html" });
+      const blobUrl = URL.createObjectURL(blob);
+      const tab = window.open(blobUrl, "_blank");
+
+      // Clean up blob URL after tab opens
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+    } catch {
+      toast.error("Failed to open document");
+    }
+  };
   const deleteApp = async (appId: number) => {
     if (!confirm("Remove this application from tracking?")) return;
 
@@ -490,9 +514,8 @@ function DashboardContent() {
                             {app.resume_id && (
                               <button
                                 onClick={() =>
-                                  window.open(
+                                  openAuthenticatedUrl(
                                     `${API}/resume-generator/${app.resume_id}/view`,
-                                    "_blank",
                                   )
                                 }
                                 className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 transition text-sm font-medium">
@@ -515,9 +538,8 @@ function DashboardContent() {
                             {app.cover_letter_id && (
                               <button
                                 onClick={() =>
-                                  window.open(
+                                  openAuthenticatedUrl(
                                     `${API}/cover-letter/${app.cover_letter_id}/view`,
-                                    "_blank",
                                   )
                                 }
                                 className="flex items-center gap-2 px-3 py-2 rounded-lg bg-purple-500/10 text-purple-400 border border-purple-500/20 hover:bg-purple-500/20 transition text-sm font-medium">
