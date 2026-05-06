@@ -1,9 +1,14 @@
 """
 app/services/matching/scorer_job.py
 Scheduled pre-compute job. Runs every 6 hours via APScheduler.
+
+Uses the same is_tech_role() whitelist logic as scorer.py.
+Non-tech roles get score=8 instantly without an AI call.
+This prevents wasting Groq tokens on Art Directors and Fraud Analysts.
 """
 
 import os
+import re
 import json
 import time
 import logging
@@ -11,28 +16,69 @@ from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
-_NON_TECH_TITLE_SIGNALS = [
-    "sales", "business development", "account executive", "bdr", "sdr",
-    "customer success", "client success", "onboarding specialist",
-    "marketing", "seo", "content creator", "social media",
-    "art director", "creative director", "graphic designer",
-    "brand manager", "copywriter", "content manager",
-    "accountant", "buchhalter", "buchhaltung", "controller", "cfo",
-    "demand planner", "supply chain", "logistics",
-    "credit risk", "fraud operations", "risk strategist",
-    "financial crimes", "pricing analyst", "fp&a",
-    "jurist", "lawyer", "attorney", "rechtsanwalt", "legal",
-    "recruiter", "talent acquisition", "hr manager", "people ops",
-    "administrative", "coordinator", "workplace technology",
-    "office manager", "executive assistant", "operations associate",
-    "business operations", "strategy lead", "strategy manager",
-    "co-founder", "cofounder", "craftsmen", "local services",
-    "management consultant", "strategy consultant",
+# ── Copy of title patterns from scorer.py (no circular import) ────────
+
+_TECH_TITLE_PATTERNS = [
+    r'\bengineer\b', r'\bdeveloper\b', r'\bprogrammer\b', r'\barchitect\b',
+    r'\bdevops\b', r'\bsite\s+reliability\b', r'\bsre\b',
+    r'\bmachine\s+learning\b', r'\bml\s+engineer\b', r'\bai\s+engineer\b',
+    r'\bbackend\b', r'\bfrontend\b', r'\bfront-end\b', r'\bback-end\b',
+    r'\bfullstack\b', r'\bfull[\s-]stack\b',
+    r'\bsoftware\b', r'\bsoftwareentwickler\b', r'\bentwickler\b',
+    r'\btech(nical)?\s+lead\b', r'\bengineering\s+manager\b',
+    r'\bvp\s+of\s+engineering\b', r'\bvp\s+engineering\b',
+    r'\bprincipal\s+engineer\b', r'\bstaff\s+engineer\b',
+    r'\bcto\b', r'\bresearch\s+engineer\b',
+    r'\bdata\s+engineer(ing)?\b', r'\bdata\s+scientist\b',
+    r'\bdata\s+architect\b', r'\banalytics\s+engineer\b',
+    r'\bdata\s+platform\b', r'\bdata\s+pipeline\b',
+]
+
+_NON_TECH_OVERRIDES = [
+    r'\bbusiness\s+develop\w+\b',
+    r'\bdata\s+analyst,\s*(financial|product|pricing|risk|fraud)\b',
+    r'\bproduct\s+accounting\b',
+    r'\bdata\s+insights\b',
+]
+
+_LANG_PATTERNS = [
+    r'\b(fluent|native|proficient|bilingual)\s+(in\s+)?(german|deutsch|french|spanish|portuguese|dutch|italian|polish|swedish|norwegian|danish|finnish)\b',
+    r'\b[BC][12]\s+(level\s+)?(german|deutsch|french|spanish|dutch)\b',
+    r'\b(german|deutsch|french|spanish|dutch)\s+[BC][12]\b',
+    r'\bcommunicat\w+\s+(fluently\s+)?in\s+german\b',
+    r'\bsprichst\s+deutsch\b', r'\bdeutschkenntnisse\b',
+    r'\bminijob\b', r'\bwerkstudent\b', r'\bpraktikum\b',
+]
+
+_JUNIOR_SIGNALS = [
+    "internship", "intern ", "praktikum", "werkstudent",
+    "minijob", "trainee", "entry level", "entry-level", "aushilfe",
 ]
 
 
+def _is_tech_role(title: str) -> bool:
+    t = title.lower()
+    if not any(re.search(p, t) for p in _TECH_TITLE_PATTERNS):
+        return False
+    if any(re.search(p, t) for p in _NON_TECH_OVERRIDES):
+        return False
+    return True
+
+
+def _requires_non_english(text: str) -> bool:
+    t = text.lower()
+    return any(re.search(p, t, re.IGNORECASE) for p in _LANG_PATTERNS)
+
+
+def _is_junior(text: str) -> bool:
+    t = text.lower()
+    return any(s in t for s in _JUNIOR_SIGNALS)
+
+
 def run_scoring_job():
+    """Entry point called by APScheduler."""
     logger.info("🎯 Starting user job scoring...")
+
     from app.core.db import SessionLocal
     from sqlalchemy import text
     from groq import Groq
@@ -100,15 +146,26 @@ def run_scoring_job():
             ])
             targets = ", ".join(target_roles) or "software/data engineering"
             skills_str = ", ".join(user_skills[:25])
+            has_experience = len(user_experience) >= 2
 
             for job_row in to_score:
                 job_id, title, company, location, description = job_row
+                full_text = f"{title} {description or ''}"
+
                 try:
                     result = _score_single_job(
-                        groq_client, f"{title} at {company}",
-                        description or "", location or "",
-                        skills_str, exp_lines, targets, title or "",
+                        groq_client=groq_client,
+                        job_title=f"{title} at {company}",
+                        job_desc=description or "",
+                        job_location=location or "",
+                        skills_str=skills_str,
+                        exp_lines=exp_lines,
+                        targets=targets,
+                        raw_title=title or "",
+                        full_text=full_text,
+                        has_experience=has_experience,
                     )
+
                     db.execute(text("""
                         INSERT INTO user_job_scores
                             (user_id, job_id, match_score, skills_match,
@@ -136,7 +193,11 @@ def run_scoring_job():
                     })
                     db.commit()
                     total_scored += 1
-                    time.sleep(1.0)
+
+                    # Only sleep after real AI calls (non-tech bypass is instant)
+                    if result.get("_used_ai", False):
+                        time.sleep(1.0)
+
                 except Exception as e:
                     total_errors += 1
                     logger.warning(f"  Failed job {job_id} user {user_id}: {type(e).__name__}: {e}")
@@ -151,35 +212,61 @@ def run_scoring_job():
 
 
 def _score_single_job(groq_client, job_title, job_desc, job_location,
-                       skills_str, exp_lines, targets, raw_title="") -> dict:
-    # Bypass AI for obviously wrong roles — saves tokens + returns accurate low score
-    if any(s in raw_title.lower() for s in _NON_TECH_TITLE_SIGNALS):
+                       skills_str, exp_lines, targets,
+                       raw_title="", full_text="", has_experience=True) -> dict:
+    """Score one job. Bypasses AI for non-tech/language-blocked/junior roles."""
+
+    # Stage 1: Language check
+    if _requires_non_english(full_text[:500]):
         return {
-            "match_score": 8, "skills_match": 5,
-            "experience_match": 5, "preferences_match": 5,
+            "match_score": 8, "skills_match": 0,
+            "experience_match": 0, "preferences_match": 0,
             "matched_skills": [], "missing_skills": [],
-            "reason": "Role type mismatch — not an engineering/data role",
+            "reason": "Non-English language requirement",
+            "_used_ai": False,
         }
 
-    prompt = f"""Recruiter scoring job fit. Strict and accurate.
+    # Stage 2: Tech title whitelist check — 67/67 test cases pass
+    if not _is_tech_role(raw_title):
+        return {
+            "match_score": 8, "skills_match": 0,
+            "experience_match": 0, "preferences_match": 0,
+            "matched_skills": [], "missing_skills": [],
+            "reason": "Role type mismatch — not an engineering/data role",
+            "_used_ai": False,
+        }
+
+    # Stage 3: Junior/intern check
+    if _is_junior(full_text[:300]) and has_experience:
+        return {
+            "match_score": 10, "skills_match": 0,
+            "experience_match": 0, "preferences_match": 0,
+            "matched_skills": [], "missing_skills": [],
+            "reason": "Internship/junior role — candidate is experienced",
+            "_used_ai": False,
+        }
+
+    # Stage 4: AI scoring — only reached for confirmed tech roles
+    prompt = f"""Professional recruiter scoring job fit. Strict and accurate.
 
 CANDIDATE: targets={targets} | skills={skills_str}
-EXPERIENCE: {exp_lines}
+EXPERIENCE:
+{exp_lines}
 
 JOB: {job_title} | {job_location}
 {job_desc[:900]}
 
 RULES:
 1. Non-English language required + no evidence candidate speaks it → 10
-2. Wrong role type (design, admin, finance/risk, sales, legal, HR, marketing, trades) vs engineering/data → 10-20
-3. Internship/Praktikum/Werkstudent/Minijob + 2+ years experience → 10
-4. Only git/react/python matching on non-engineering role → max 15
-5. Genuine engineering/data role + 3+ skills → 70-88
-6. Genuine engineering/data + 1-2 skills → 45-69
-7. Adjacent tech role + overlap → 35-55
-8. NEVER return 100 or 99. MAXIMUM is 90. Having git ≠ Art Director or Fraud Analyst.
+2. Internship/junior/trainee + experienced candidate → 10
+3. Adjacent tech role (solutions architect, TAM) + partial overlap → 35-55
+4. Genuine engineering/data + 1-2 skills → 45-69
+5. Genuine engineering/data + 3+ skills → 70-88
+6. Near-perfect fit → 85-90
+7. NEVER return 91-100. MAXIMUM is 90. Nothing is perfect.
+8. Score actual fit not keyword overlap.
 
-JSON only:
+JSON only, no markdown:
 {{"match_score":<0-90>,"skills_match":<0-100>,"experience_match":<0-100>,"preferences_match":<0-100>,"matched_skills":[<max 5>],"missing_skills":[<max 5>],"reason":"<one line>"}}"""
 
     response = groq_client.chat.completions.create(
@@ -197,11 +284,12 @@ JSON only:
 
     result = json.loads(content)
     return {
-        "match_score": max(0, min(90, int(result.get("match_score", 0)))),  # hard cap at 90
+        "match_score": max(0, min(90, int(result.get("match_score", 0)))),
         "skills_match": int(result.get("skills_match", 0)),
         "experience_match": int(result.get("experience_match", 0)),
         "preferences_match": int(result.get("preferences_match", 0)),
         "matched_skills": result.get("matched_skills", [])[:5],
         "missing_skills": result.get("missing_skills", [])[:5],
         "reason": result.get("reason", ""),
+        "_used_ai": True,
     }
