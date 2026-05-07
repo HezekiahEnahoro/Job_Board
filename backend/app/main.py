@@ -243,3 +243,35 @@ def admin_status(db: Session = Depends(get_db)):
         "sources": {"greenhouse": gh, "lever": lever, "ashby": ashby},
         "counts": {"total": total, "last_7d": recent_7d},
     }
+
+@app.post("/internal/trigger-scoring")
+async def trigger_scoring(background_tasks: BackgroundTasks, request: Request):
+    """Manually trigger the scoring job. Protected by INTERNAL_SECRET header."""
+    secret = request.headers.get("X-Internal-Secret", "")
+    if secret != os.getenv("INTERNAL_SECRET", ""):
+        return JSONResponse(status_code=403, content={"detail": "Forbidden"})
+    from app.services.matching.scorer_job import run_scoring_job
+    background_tasks.add_task(run_scoring_job)
+    return {"status": "scoring job triggered", "check": "Render logs for 🎯 Starting user job scoring"}
+
+
+@app.get("/internal/scoring-status")
+def scoring_status(request: Request, db: Session = Depends(get_db)):
+    """Check how many scores exist and when last computed. No auth — read only."""
+    from sqlalchemy import text
+    result = db.execute(text("""
+        SELECT
+            COUNT(*) as total_scores,
+            COUNT(DISTINCT user_id) as users_scored,
+            MAX(computed_at) as last_computed,
+            AVG(match_score) as avg_score,
+            COUNT(CASE WHEN match_score >= 91 THEN 1 END) as bad_scores_over_90
+        FROM user_job_scores
+    """)).fetchone()
+    return {
+        "total_scores": result[0],
+        "users_scored": result[1],
+        "last_computed": result[2].isoformat() if result[2] else None,
+        "avg_score": round(float(result[3]), 1) if result[3] else 0,
+        "bad_scores_over_90": result[4],
+    }
