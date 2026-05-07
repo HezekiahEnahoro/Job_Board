@@ -63,23 +63,6 @@ async def lifespan(app: FastAPI):
     # ── Ingest: every 12 hours ────────────────────────────────────────
     scheduler.add_job(run_ingest_once, trigger="interval", hours=12)
 
-    # ── Score jobs for active users: every 6 hours ────────────────────
-    # Runs as a sync function in APScheduler's thread pool.
-    # Starts 1 hour after startup so ingest has time to complete first.
-    # time.sleep(1.0) inside the job keeps Groq calls under TPM limits.
-    # max_instances=1 ensures it never runs twice simultaneously.
-    from app.services.matching.scorer_job import run_scoring_job
-    from datetime import datetime, timedelta
-
-    scheduler.add_job(
-        run_scoring_job,
-        trigger="interval",
-        hours=6,
-        next_run_time=datetime.now() + timedelta(hours=1),
-        id="score_users",
-        max_instances=1,
-        misfire_grace_time=3600,
-    )
 
     # ── Follow-up reminders: daily at 9 AM ───────────────────────────
     from app.services.email.tasks import check_followup_reminders
