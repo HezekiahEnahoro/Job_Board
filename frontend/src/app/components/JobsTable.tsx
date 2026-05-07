@@ -223,6 +223,18 @@ export default function JobsTable() {
     }
   };
 
+  const updateJobScore = (jobId: number, score: number) => {
+    setPage((prev) => {
+      if (!prev) return prev;
+      const updated = (prev.jobs || prev.items || []).map((j) =>
+        j.id === jobId ? { ...j, match_score: score } : j,
+      );
+      // Return with whichever key the page uses (jobs or items)
+      return prev.jobs
+        ? { ...prev, jobs: updated }
+        : { ...prev, items: updated };
+    });
+  };
   const getMatchBadgeClass = (score: number) => {
     if (score >= 90)
       return "bg-green-500/20 border-green-500/40 text-green-400";
@@ -532,7 +544,10 @@ export default function JobsTable() {
                         {/* <ViewJob job={job} /> */}
                         {hasProfile && job.apply_url && (
                           <>
-                            <QuickApply job={job} />
+                            <QuickApply
+                              job={job}
+                              onScoreUpdate={updateJobScore}
+                            />
                             <PrepInterview job={job} />
                           </>
                         )}

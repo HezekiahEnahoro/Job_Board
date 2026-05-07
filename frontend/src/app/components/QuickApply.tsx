@@ -56,7 +56,13 @@ type GeneratedResume = {
 
 type CoverLetter = { id: number; content: string };
 
-export default function QuickApply({ job }: { job: Job }) {
+type Props = {
+  job: Job;
+  // Called after resume generates — updates the job card score in JobsTable
+  onScoreUpdate?: (jobId: number, score: number) => void;
+};
+
+export default function QuickApply({ job, onScoreUpdate }: Props) {
   const [open, setOpen] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [generatingCoverLetter, setGeneratingCoverLetter] = useState(false);
@@ -103,7 +109,16 @@ export default function QuickApply({ job }: { job: Job }) {
           throw new Error("Please upload your resume first at /resume");
         throw new Error(msg);
       }
-      setResume(await resRes.json());
+      const resumeData: GeneratedResume = await resRes.json();
+      setResume(resumeData);
+
+      // ── Push score back to job card immediately ─────────────────────
+      // resume.match_score is computed from the actual job description.
+      // Update the job card so both show the same number, no page refresh needed.
+      if (onScoreUpdate && resumeData.match_score) {
+        onScoreUpdate(job.id, resumeData.match_score);
+      }
+
       setGeneratingCoverLetter(true);
       const clRes = await fetch(`${API}/cover-letter/generate`, {
         method: "POST",
@@ -201,12 +216,6 @@ export default function QuickApply({ job }: { job: Job }) {
         </Button>
       </DialogTrigger>
 
-      {/*
-        Width:  95vw on mobile, up to 90vw capped at 1400px on desktop
-        Height: 92vh fixed so both panels scroll independently
-        Layout: single column on mobile (description capped at 35vh, generate below)
-                two columns on lg+ (each panel scrolls independently)
-      */}
       <DialogContent
         className="p-0 gap-0 bg-gray-950 border-white/10 flex flex-col"
         style={{
@@ -215,7 +224,7 @@ export default function QuickApply({ job }: { job: Job }) {
           height: "92vh",
           overflow: "hidden",
         }}>
-        {/* ── Header ── */}
+        {/* Header */}
         <div className="px-4 sm:px-6 pt-5 pb-4 border-b border-white/10 shrink-0">
           <DialogHeader>
             <DialogTitle className="text-base sm:text-xl font-black flex items-center gap-2 pr-8 leading-tight">
@@ -244,21 +253,13 @@ export default function QuickApply({ job }: { job: Job }) {
           </DialogHeader>
         </div>
 
-        {/* ── Body ── */}
+        {/* Body */}
         <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden">
-          {/* LEFT — Job Description
-              Mobile:  fixed 35vh so generate section is always visible below
-              Desktop: full height, independent scroll */}
+          {/* Left — Job Description */}
           <div
             className="lg:w-[42%] lg:border-r border-white/10 overflow-y-auto border-b lg:border-b-0"
-            style={{ maxHeight: "65vh", flexShrink: 0 }}
-            // On lg override via CSS below
-          >
-            <style>{`
-              @media (min-width: 1024px) {
-                .desc-panel { max-height: none !important; height: 100%; }
-              }
-            `}</style>
+            style={{ maxHeight: "65vh", flexShrink: 0 }}>
+            <style>{`@media (min-width: 1024px) { .desc-panel { max-height: none !important; height: 100%; } }`}</style>
             <div
               className="desc-panel p-4 sm:p-5"
               style={{ maxHeight: "35vh" }}>
@@ -283,12 +284,9 @@ export default function QuickApply({ job }: { job: Job }) {
             </div>
           </div>
 
-          {/* RIGHT — Generate & Apply
-              Mobile:  fills remaining space, scrolls independently
-              Desktop: fills remaining space, scrolls independently */}
+          {/* Right — Generate & Apply */}
           <div className="flex-1 min-h-0 overflow-y-auto">
             <div className="p-4 sm:p-5 space-y-4">
-              {/* Pre-generate */}
               {!resume && !generating && !error && (
                 <div className="flex flex-col items-center justify-center py-8 text-center">
                   <div className="p-4 rounded-2xl bg-gradient-to-br from-green-600/20 to-emerald-600/20 border border-green-500/20 mb-4">
@@ -308,7 +306,6 @@ export default function QuickApply({ job }: { job: Job }) {
                 </div>
               )}
 
-              {/* Generating */}
               {generating && (
                 <div className="flex flex-col items-center justify-center py-8 text-center">
                   <div className="relative mb-4">
@@ -328,7 +325,6 @@ export default function QuickApply({ job }: { job: Job }) {
                 </div>
               )}
 
-              {/* Error */}
               {error && !generating && (
                 <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4">
                   <div className="flex items-start gap-3">
@@ -363,15 +359,16 @@ export default function QuickApply({ job }: { job: Job }) {
                 </div>
               )}
 
-              {/* Generated output */}
               {resume && !generating && (
                 <div className="space-y-4">
-                  {/* Resume */}
+                  {/* Resume card — score intentionally removed here.
+                      Score lives on the job card only (single source of truth).
+                      onScoreUpdate() already updated the card badge above. */}
                   <div className="rounded-xl border border-green-500/20 bg-green-500/10 p-4">
                     <div className="flex items-center gap-2 mb-3">
                       <CheckCircle2 className="h-4 w-4 text-green-400 shrink-0" />
                       <h3 className="font-bold text-green-400 text-sm">
-                        Resume Tailored — {resume.match_score}% Match
+                        Resume Tailored ✅
                       </h3>
                     </div>
                     {resume.highlighted_skills?.length > 0 && (
@@ -412,7 +409,6 @@ export default function QuickApply({ job }: { job: Job }) {
                     </div>
                   </div>
 
-                  {/* Cover letter */}
                   <div className="rounded-xl border border-blue-500/20 bg-blue-500/10 p-4">
                     <div className="flex items-center gap-2 mb-3">
                       <Mail className="h-4 w-4 text-blue-400 shrink-0" />
@@ -459,7 +455,6 @@ export default function QuickApply({ job }: { job: Job }) {
                     </div>
                   </div>
 
-                  {/* Apply */}
                   <div className="pt-1">
                     <Button
                       onClick={handleApply}
