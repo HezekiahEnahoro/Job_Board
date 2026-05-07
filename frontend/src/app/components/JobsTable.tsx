@@ -357,7 +357,7 @@ export default function JobsTable() {
                   </button>
                 ))}
               </div>
-              {page?.matched_count !== undefined && (
+              {page?.matched_count !== undefined && page.matched_count > 0 && (
                 <p className="text-sm text-gray-400 mt-4">
                   <span className="font-bold text-purple-400">
                     {page.matched_count}

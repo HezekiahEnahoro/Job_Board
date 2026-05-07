@@ -1,33 +1,25 @@
 """
 app/services/matching/matcher.py
 
-Score source of truth: resume tailoring (resume_router.py writes to user_job_scores).
-For jobs without a tailored score: keyword prescore (conservative, no inflation).
-
-scorer_job is DISABLED — it was overwriting accurate tailoring scores with wrong ones.
-Scores now only enter user_job_scores via Quick Apply → resume_router.py.
-
-Result:
-- Job card score = resume tailoring score (accurate, consistent with Quick Apply)
-- Unscored jobs show keyword estimate (rough but never inflated)
-- On refresh: tailored scores persist, no drift
+Score source of truth: resume tailoring (resume_router.py → user_job_scores).
+Unscored jobs: keyword prescore (conservative, no inflation).
+scorer_job is DISABLED — remove it from main.py scheduler.
 """
 
 import json
 import logging
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.core import crud
 from app.services.profile.models import UserProfile
-from .scorer import keyword_prescore, is_tech_role, _fallback_score
+from .scorer import keyword_prescore, _fallback_score
 
 logger = logging.getLogger(__name__)
 
-# Scores above this came from the old broken scorer — filter them out
-_MAX_VALID_SCORE = 90
+_MAX_VALID_SCORE = 90  # anything above = old broken scorer, ignore
 
 
 def job_to_dict(job) -> Dict[str, Any]:
@@ -47,6 +39,44 @@ def job_to_dict(job) -> Dict[str, Any]:
     }
 
 
+def _parse_json(val) -> list:
+    if val is None:
+        return []
+    if isinstance(val, str):
+        try:
+            return json.loads(val)
+        except Exception:
+            return []
+    return val
+
+
+def _fetch_tailored_scores(db: Session, user_id: int, job_ids: List[int]) -> Dict[int, Dict]:
+    """Fetch accurate tailored scores for a list of job IDs. Returns {job_id: score_dict}."""
+    if not job_ids:
+        return {}
+    rows = db.execute(text("""
+        SELECT job_id, match_score, skills_match, experience_match,
+               preferences_match, matched_skills, missing_skills, reason
+        FROM user_job_scores
+        WHERE user_id = :uid
+          AND job_id = ANY(:jids)
+          AND match_score <= :max
+    """), {"uid": user_id, "jids": job_ids, "max": _MAX_VALID_SCORE}).fetchall()
+
+    return {
+        row[0]: {
+            "match_score": row[1],
+            "skills_match": row[2],
+            "experience_match": row[3],
+            "preferences_match": row[4],
+            "matched_skills": _parse_json(row[5]),
+            "missing_skills": _parse_json(row[6]),
+            "reason": row[7] or "",
+        }
+        for row in rows
+    }
+
+
 def get_matched_jobs(
     db: Session,
     user_id: int,
@@ -55,18 +85,6 @@ def get_matched_jobs(
     offset: int = 0,
     **filters
 ) -> Dict[str, Any]:
-    """
-    Get jobs with match scores.
-
-    Score priority:
-    1. user_job_scores (written by resume_router.py after tailoring) — accurate
-    2. keyword_prescore — rough estimate, shown for unscored jobs
-
-    min_match_score filter:
-    - 0 (All Jobs): returns everything, scores from tailoring or keyword
-    - >0 (60%+, etc.): returns ONLY jobs with tailored scores >= threshold
-      (keyword estimates are too rough to use for precision filtering)
-    """
     user_profile = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
 
     if not user_profile:
@@ -79,7 +97,6 @@ def get_matched_jobs(
         return {
             "jobs": jobs_dicts,
             "total": jobs_data.get("total", 0),
-            "matched_count": 0,
             "limit": limit,
             "offset": offset,
         }
@@ -91,14 +108,18 @@ def get_matched_jobs(
     }
 
     if min_match_score > 0:
-        # ── Filtered view: only jobs with accurate tailored scores ─────
-        return _get_tailored_filtered(db, user_id, profile_dict, min_match_score, limit, offset, **filters)
+        # Filtered view: only jobs with tailored scores >= threshold
+        return _get_filtered_by_tailored_score(
+            db, user_id, min_match_score, limit, offset, **filters
+        )
     else:
-        # ── All Jobs: current page with tailored or keyword scores ─────
-        return _get_all_with_scores(db, user_id, profile_dict, limit, offset, **filters)
+        # All Jobs: current page with tailored or keyword scores
+        return _get_page_with_scores(
+            db, user_id, profile_dict, limit, offset, **filters
+        )
 
 
-def _get_all_with_scores(
+def _get_page_with_scores(
     db: Session,
     user_id: int,
     profile_dict: Dict,
@@ -107,17 +128,20 @@ def _get_all_with_scores(
     **filters
 ) -> Dict[str, Any]:
     """
-    Fetch current page of jobs, attach tailored scores where available,
-    keyword estimates for the rest.
+    Fetch current page of jobs. For each job:
+    - If user has a tailored score in user_job_scores → use that
+    - Otherwise → keyword prescore (conservative estimate)
+
+    matched_count: how many jobs the user has tailored resumes for.
+    If 0, omit from response so frontend doesn't show "0 jobs match".
     """
     jobs_data = crud.list_jobs_paginated(db, limit=limit, offset=offset, **filters)
     jobs_list = jobs_data.get("jobs") or jobs_data.get("items", [])
     total = jobs_data.get("total", 0)
 
     if not jobs_list:
-        return {"jobs": [], "total": total, "matched_count": 0, "limit": limit, "offset": offset}
+        return {"jobs": [], "total": total, "limit": limit, "offset": offset}
 
-    # Fetch tailored scores for this page's job IDs
     job_ids = [j.id if not isinstance(j, dict) else j["id"] for j in jobs_list]
     tailored = _fetch_tailored_scores(db, user_id, job_ids)
 
@@ -127,43 +151,56 @@ def _get_all_with_scores(
         jid = jd["id"]
 
         if jid in tailored:
-            # Use accurate tailoring score
             t = tailored[jid]
             jd["match_score"] = t["match_score"]
             jd["match_details"] = t
         else:
-            # Use keyword estimate
             ks = keyword_prescore(jd, profile_dict)
+            fallback = _fallback_score(jd, profile_dict)
+            fallback["match_score"] = ks
             jd["match_score"] = ks
-            jd["match_details"] = _fallback_score(jd, profile_dict)
-            jd["match_details"]["match_score"] = ks
+            jd["match_details"] = fallback
 
         result.append(jd)
 
-    # Sort: tailored scores first (more trustworthy), then by score desc
-    result.sort(key=lambda x: (x["id"] in tailored, x.get("match_score", 0)), reverse=True)
+    # Sort: tailored scores (accurate) first, then by score desc
+    result.sort(
+        key=lambda x: (x["id"] in tailored, x.get("match_score", 0)),
+        reverse=True
+    )
 
-    return {
+    # Total tailored score count (across ALL jobs, not just this page)
+    total_tailored = db.execute(text("""
+        SELECT COUNT(*) FROM user_job_scores
+        WHERE user_id = :uid AND match_score <= :max
+    """), {"uid": user_id, "max": _MAX_VALID_SCORE}).scalar() or 0
+
+    response = {
         "jobs": result,
         "total": total,
-        "matched_count": len(tailored),  # count of jobs with accurate scores
         "limit": limit,
         "offset": offset,
     }
 
+    # Only include matched_count if user has actually tailored some resumes.
+    # When 0, omit it so the frontend doesn't show "0 jobs match your profile".
+    if total_tailored > 0:
+        response["matched_count"] = total_tailored
 
-def _get_tailored_filtered(
+    return response
+
+
+def _get_filtered_by_tailored_score(
     db: Session,
     user_id: int,
-    profile_dict: Dict,
     min_match_score: int,
     limit: int,
     offset: int,
     **filters
 ) -> Dict[str, Any]:
     """
-    For filtered views (60%+, 70%+ etc): only return jobs with tailored
-    scores at or above threshold. Keyword estimates excluded — too rough.
+    Filter by min_match_score. Only shows jobs with accurate tailored scores.
+    Keyword estimates are too rough for precision filtering.
     """
     q = filters.get("q")
     skill = filters.get("skill")
@@ -173,7 +210,7 @@ def _get_tailored_filtered(
 
     where_clauses = [
         "ujs.user_id = :user_id",
-        f"ujs.match_score >= :min_score",
+        "ujs.match_score >= :min_score",
         f"ujs.match_score <= {_MAX_VALID_SCORE}",
         f"j.scraped_at >= NOW() - INTERVAL '{days} days'",
     ]
@@ -199,10 +236,10 @@ def _get_tailored_filtered(
 
     where_sql = " AND ".join(where_clauses)
 
-    total_matched = db.execute(text(f"""
-        SELECT COUNT(*) FROM user_job_scores ujs
-        JOIN jobs j ON j.id = ujs.job_id WHERE {where_sql}
-    """), params).scalar() or 0
+    total_matched = db.execute(
+        text(f"SELECT COUNT(*) FROM user_job_scores ujs JOIN jobs j ON j.id = ujs.job_id WHERE {where_sql}"),
+        params
+    ).scalar() or 0
 
     rows = db.execute(text(f"""
         SELECT j.id, j.title, j.company, j.location, j.remote_flag,
@@ -218,8 +255,6 @@ def _get_tailored_filtered(
 
     jobs = []
     for row in rows:
-        matched_skills = _parse_json(row[13])
-        missing_skills = _parse_json(row[14])
         jobs.append({
             "id": row[0], "title": row[1], "company": row[2],
             "location": row[3], "remote_flag": row[4],
@@ -230,7 +265,8 @@ def _get_tailored_filtered(
             "match_details": {
                 "match_score": row[9], "skills_match": row[10],
                 "experience_match": row[11], "preferences_match": row[12],
-                "matched_skills": matched_skills, "missing_skills": missing_skills,
+                "matched_skills": _parse_json(row[13]),
+                "missing_skills": _parse_json(row[14]),
                 "reason": row[15] if len(row) > 15 else "",
             },
         })
@@ -246,44 +282,6 @@ def _get_tailored_filtered(
         "limit": limit,
         "offset": offset,
     }
-
-
-def _fetch_tailored_scores(db: Session, user_id: int, job_ids: List[int]) -> Dict[int, Dict]:
-    """Fetch accurate tailored scores for a list of job IDs. Returns {job_id: score_dict}."""
-    if not job_ids:
-        return {}
-    rows = db.execute(text("""
-        SELECT job_id, match_score, skills_match, experience_match,
-               preferences_match, matched_skills, missing_skills, reason
-        FROM user_job_scores
-        WHERE user_id = :uid
-          AND job_id = ANY(:jids)
-          AND match_score <= :max
-    """), {"uid": user_id, "jids": job_ids, "max": _MAX_VALID_SCORE}).fetchall()
-
-    result = {}
-    for row in rows:
-        result[row[0]] = {
-            "match_score": row[1],
-            "skills_match": row[2],
-            "experience_match": row[3],
-            "preferences_match": row[4],
-            "matched_skills": _parse_json(row[5]),
-            "missing_skills": _parse_json(row[6]),
-            "reason": row[7] or "",
-        }
-    return result
-
-
-def _parse_json(val) -> list:
-    if val is None:
-        return []
-    if isinstance(val, str):
-        try:
-            return json.loads(val)
-        except Exception:
-            return []
-    return val
 
 
 def get_top_matches(db: Session, user_id: int, top_k: int = 10) -> List[Dict[str, Any]]:
