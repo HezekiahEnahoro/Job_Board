@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from app.core.db import get_db
 from app.services.auth.dependencies import get_current_user
 from app.services.auth.models import User
@@ -12,7 +13,10 @@ from .pdf_builder import build_resume_html
 from app.services.matching.scorer import calculate_match_score
 from slowapi import Limiter
 from slowapi.util import get_remote_address
+import json
+import logging
 
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/resume-generator", tags=["resume-generator"])
 limiter = Limiter(key_func=get_remote_address)
@@ -25,10 +29,6 @@ def generate_resume_for_job(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """
-    Generate a tailored resume for a specific job
-    """
-    
     # Get user profile
     profile = db.query(UserProfile).filter(UserProfile.user_id == current_user.id).first()
     if not profile:
@@ -39,7 +39,6 @@ def generate_resume_for_job(
     if not job:
         raise HTTPException(404, "Job not found")
     
-    # Convert to dicts
     profile_dict = {
         "full_name": profile.full_name,
         "email": profile.email,
@@ -85,7 +84,7 @@ def generate_resume_for_job(
     # Build HTML
     resume_html = build_resume_html(profile_dict, tailored_content, payload.template)
     
-    # Save to database
+    # Save generated resume
     generated_resume = GeneratedResume(
         user_id=current_user.id,
         job_id=payload.job_id,
@@ -101,8 +100,41 @@ def generate_resume_for_job(
     db.add(generated_resume)
     db.commit()
     db.refresh(generated_resume)
-    
+
+    # ── Sync score to user_job_scores so job card shows the same number ──
+    # The resume tailoring AI is the most accurate scorer — it reads the
+    # full job description and tailors against the actual profile.
+    # This makes job card score = Quick Apply score = single source of truth.
+    try:
+        matched_skills = tailored_content.get("highlighted_skills", [])
+        db.execute(text("""
+            INSERT INTO user_job_scores
+                (user_id, job_id, match_score, skills_match,
+                 experience_match, preferences_match,
+                 matched_skills, missing_skills, reason, computed_at)
+            VALUES
+                (:uid, :jid, :score, :score, 50, 50,
+                 :ms::jsonb, '[]'::jsonb, 'Scored from resume tailoring', NOW())
+            ON CONFLICT (user_id, job_id) DO UPDATE SET
+                match_score    = EXCLUDED.match_score,
+                skills_match   = EXCLUDED.skills_match,
+                matched_skills = EXCLUDED.matched_skills,
+                reason         = EXCLUDED.reason,
+                computed_at    = NOW()
+        """), {
+            "uid": current_user.id,
+            "jid": payload.job_id,
+            "score": match_details["match_score"],
+            "ms": json.dumps(matched_skills[:10]),
+        })
+        db.commit()
+        logger.info(f"[Resume] Synced score {match_details['match_score']}% for job {payload.job_id} user {current_user.id}")
+    except Exception as e:
+        logger.warning(f"[Resume] Failed to sync score to user_job_scores: {e}")
+        # Non-critical — resume still returns successfully
+
     return generated_resume
+
 
 @router.get("/{resume_id}", response_model=GeneratedResumeOut)
 def get_generated_resume(
@@ -110,16 +142,14 @@ def get_generated_resume(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get a previously generated resume"""
     resume = db.query(GeneratedResume).filter(
         GeneratedResume.id == resume_id,
         GeneratedResume.user_id == current_user.id
     ).first()
-    
     if not resume:
         raise HTTPException(404, "Resume not found")
-    
     return resume
+
 
 @router.get("/{resume_id}/view")
 def view_resume_html(
@@ -127,15 +157,11 @@ def view_resume_html(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """View generated resume as HTML page"""
     from fastapi.responses import HTMLResponse
-    
     resume = db.query(GeneratedResume).filter(
         GeneratedResume.id == resume_id,
         GeneratedResume.user_id == current_user.id
     ).first()
-    
     if not resume:
         raise HTTPException(404, "Resume not found")
-    
     return HTMLResponse(content=resume.resume_html)
