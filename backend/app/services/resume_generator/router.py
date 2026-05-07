@@ -44,12 +44,16 @@ def generate_resume_for_job(
         "email": profile.email,
         "phone": profile.phone,
         "location": profile.location,
-        "linkedin_url": profile.linkedin_url,
-        "portfolio_url": profile.portfolio_url,
-        "summary": profile.summary,
+        "summary": profile.summary or "",         
         "skills": profile.skills or [],
         "experience": profile.experience or [],
-        "education": profile.education or []
+        "education": profile.education or [],
+        "certifications": profile.certifications or [],  
+        "languages": profile.languages or [],            
+        "preferences": profile.preferences or {},
+        "linkedin_url": profile.linkedin_url,
+        "portfolio_url": profile.portfolio_url,
+        "github_url": profile.github_url,
     }
     
     job_dict = {
@@ -60,18 +64,13 @@ def generate_resume_for_job(
     
     # Calculate match score
     match_details = calculate_match_score(
-        {
-            "title": job.title,
-            "description": job.description_text or "",
-            "skills": [],
-            "remote": job.remote_flag,
-            "location": job.location or ""
-        },
-        {
-            "skills": profile.skills or [],
-            "experience": profile.experience or [],
-            "preferences": profile.preferences or {}
-        }
+    {
+        "title": job.title,
+        "description": job.description_text or "",
+        "location": job.location or "",
+        "remote_flag": job.remote_flag,
+    },
+    profile_dict 
     )
     
     # Generate tailored resume
