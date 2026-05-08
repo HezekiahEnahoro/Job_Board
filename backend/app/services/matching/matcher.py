@@ -168,6 +168,8 @@ def _bootstrap_scores(db: Session, user_id: int, profile_dict: Dict, **filters):
         })
 
     # Bulk insert — ON CONFLICT DO NOTHING so we never overwrite AI scores
+    # Note: pass JSON as plain string param, cast inside SQL using CAST() not ::
+    # SQLAlchemy text() misinterprets :param::type as malformed bind parameter
     for item in batch:
         db.execute(text("""
             INSERT INTO user_job_scores
@@ -176,9 +178,9 @@ def _bootstrap_scores(db: Session, user_id: int, profile_dict: Dict, **filters):
                  matched_skills, missing_skills, reason, computed_at)
             VALUES
                 (:uid, :jid, :score, :score, 40, 40,
-                 :ms::jsonb, '[]'::jsonb, 'keyword estimate', NOW())
+                 CAST(:ms AS jsonb), CAST(:mis AS jsonb), 'keyword estimate', NOW())
             ON CONFLICT (user_id, job_id) DO NOTHING
-        """), item)
+        """), {**item, "mis": "[]"})
 
     db.commit()
     logger.info(f"[Matcher] Bootstrap complete — {len(batch)} scores written for user {user_id}")

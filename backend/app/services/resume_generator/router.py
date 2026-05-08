@@ -44,16 +44,12 @@ def generate_resume_for_job(
         "email": profile.email,
         "phone": profile.phone,
         "location": profile.location,
-        "summary": profile.summary or "",         
-        "skills": profile.skills or [],
-        "experience": profile.experience or [],
-        "education": profile.education or [],
-        "certifications": profile.certifications or [],  
-        "languages": profile.languages or [],            
-        "preferences": profile.preferences or {},
         "linkedin_url": profile.linkedin_url,
         "portfolio_url": profile.portfolio_url,
-        "github_url": profile.github_url,
+        "summary": profile.summary,
+        "skills": profile.skills or [],
+        "experience": profile.experience or [],
+        "education": profile.education or []
     }
     
     job_dict = {
@@ -64,13 +60,18 @@ def generate_resume_for_job(
     
     # Calculate match score
     match_details = calculate_match_score(
-    {
-        "title": job.title,
-        "description": job.description_text or "",
-        "location": job.location or "",
-        "remote_flag": job.remote_flag,
-    },
-    profile_dict 
+        {
+            "title": job.title,
+            "description": job.description_text or "",
+            "skills": [],
+            "remote": job.remote_flag,
+            "location": job.location or ""
+        },
+        {
+            "skills": profile.skills or [],
+            "experience": profile.experience or [],
+            "preferences": profile.preferences or {}
+        }
     )
     
     # Generate tailored resume
@@ -113,7 +114,7 @@ def generate_resume_for_job(
                  matched_skills, missing_skills, reason, computed_at)
             VALUES
                 (:uid, :jid, :score, :score, 50, 50,
-                 :ms::jsonb, '[]'::jsonb, 'Scored from resume tailoring', NOW())
+                 CAST(:ms AS jsonb), CAST('[]' AS jsonb), 'Scored from resume tailoring', NOW())
             ON CONFLICT (user_id, job_id) DO UPDATE SET
                 match_score    = EXCLUDED.match_score,
                 skills_match   = EXCLUDED.skills_match,

@@ -268,7 +268,7 @@ JSON only: {{"match_score":<0-90>,"matched_skills":[<max 5>],"reason":"<10 words
                                  matched_skills, missing_skills, reason, computed_at)
                             VALUES
                                 (:uid, :jid, :score, :score, 50, 50,
-                                 :ms::jsonb, '[]'::jsonb, 'ai onboarding score', NOW())
+                                 CAST(:ms AS jsonb), CAST(:mis AS jsonb), 'ai onboarding score', NOW())
                             ON CONFLICT (user_id, job_id) DO UPDATE SET
                                 match_score    = EXCLUDED.match_score,
                                 skills_match   = EXCLUDED.skills_match,
@@ -279,6 +279,7 @@ JSON only: {{"match_score":<0-90>,"matched_skills":[<max 5>],"reason":"<10 words
                         """), {
                             "uid": user_id, "jid": jid, "score": score,
                             "ms": json.dumps(matched[:5]),
+                        "mis": "[]",
                         })
                         db.commit()
                         scored += 1
