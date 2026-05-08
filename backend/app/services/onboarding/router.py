@@ -11,6 +11,7 @@ from typing import List
 import json
 import time
 import logging
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 logger = logging.getLogger(__name__)
 
@@ -120,41 +121,45 @@ def set_job_preferences(
         "remote_preference": preferences.remote_preference,
         "location": preferences.location
     }
-
     db.commit()
     db.refresh(profile)
 
-    # ── Score top jobs in the background ─────────────────────────────
-    # Fires after response is sent — user doesn't wait for this.
-    # By the time they reach the jobs page (~3-5 seconds), most scores
-    # will be written and they'll see real match badges immediately.
-    background_tasks.add_task(
-        _score_jobs_for_new_user,
-        user_id=current_user.id,
-    )
+    # Fire background AI scoring — user is still on onboarding screens
+    # By the time they reach the jobs page, scores will be ready
+    background_tasks.add_task(_ai_score_jobs_for_new_user, user_id=current_user.id)
 
     return {"success": True, "message": "Preferences saved!"}
 
 
-def _score_jobs_for_new_user(user_id: int):
+def _ai_score_jobs_for_new_user(user_id: int):
     """
-    Background task: score the top 50 recent tech jobs for a new user.
-    Runs after preferences are saved so we have full profile context.
-    Writes results to user_job_scores — jobs page shows scores on first load.
+    Background task: AI-score top 200 tech jobs for a new user.
+
+    Uses short prompt (~280 tokens/call) to stay within Groq's 6000 TPM.
+    Runs 6 parallel workers → ~20 calls/min → 200 jobs in ~10 minutes.
+    Filters to tech roles first (keyword, instant) to avoid wasting
+    API calls on non-tech jobs.
+
+    User spends ~3-5 mins on final onboarding screens + lands on jobs page.
+    By then, first 60-80 jobs are already scored and showing accurate badges.
+    Remaining jobs score over next few minutes in the background.
     """
-    from app.services.matching.scorer import (
-        calculate_match_score, is_tech_role, requires_language_user_lacks
-    )
+    import os
+    from groq import Groq
+
+    GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+    if not GROQ_API_KEY:
+        logger.warning("[Onboarding Scorer] GROQ_API_KEY not set — skipping")
+        return
 
     db = SessionLocal()
     try:
-        # Get full profile
         profile = db.query(UserProfile).filter(
             UserProfile.user_id == user_id
         ).first()
 
         if not profile or not profile.skills:
-            logger.info(f"[Onboarding Scorer] User {user_id} has no profile/skills — skipping")
+            logger.info(f"[Onboarding Scorer] User {user_id}: no profile — skipping")
             return
 
         profile_dict = {
@@ -167,90 +172,136 @@ def _score_jobs_for_new_user(user_id: int):
             "preferences": profile.preferences or {},
         }
 
-        # Fetch top 100 recent jobs
+        targets = ", ".join(profile.preferences.get("job_titles", [])) or "software/data engineering"
+        skills_str = ", ".join((profile.skills or [])[:25])
+        exp_lines = "\n".join([
+            f"- {e.get('title','')} at {e.get('company','')}"
+            for e in (profile.experience or [])[:3]
+            if isinstance(e, dict)
+        ])
+        langs = [
+            (l.get("language","") if isinstance(l, dict) else str(l)).lower()
+            for l in (profile.languages or [])
+        ]
+        langs_str = ", ".join(langs) if langs else "english"
+
+        # Fetch recent jobs — pre-filtered to tech roles only
+        from app.services.matching.scorer import is_tech_role
         rows = db.execute(text("""
             SELECT id, title, company, location, description_text
             FROM jobs
             WHERE scraped_at >= NOW() - INTERVAL '30 days'
             ORDER BY scraped_at DESC
-            LIMIT 100
+            LIMIT 500
         """)).fetchall()
 
-        if not rows:
-            logger.info(f"[Onboarding Scorer] No recent jobs found")
-            return
+        # Filter to tech roles instantly (no API)
+        tech_jobs = [r for r in rows if is_tech_role(r[1] or "")]
+        logger.info(f"[Onboarding Scorer] User {user_id}: {len(tech_jobs)} tech jobs from {len(rows)} total")
 
-        logger.info(f"[Onboarding Scorer] Scoring {len(rows)} jobs for user {user_id}")
+        # Score top 200 tech jobs
+        to_score = tech_jobs[:200]
 
-        # Filter to tech roles first (instant, no API calls)
-        tech_jobs = []
-        for row in rows:
+        groq_client = Groq(api_key=GROQ_API_KEY)
+
+        def score_one(row):
             job_id, title, company, location, description = row
-            if is_tech_role(title or ""):
-                tech_jobs.append(row)
+            desc = (description or "")[:600]  # short = fewer tokens
+            prompt = f"""Score job fit 0-90. Strict.
 
-        logger.info(f"[Onboarding Scorer] {len(tech_jobs)} tech roles after filter")
+CANDIDATE: targets={targets} | skills={skills_str} | languages={langs_str}
+EXPERIENCE: {exp_lines}
 
-        # Score each tech job with AI
+JOB: {title} at {company} | {location or ''}
+{desc}
+
+RULES:
+1. Job requires non-English language candidate doesn't speak → 10
+2. Wrong role type (non-engineering/data) → 10-20
+3. Internship/junior + experienced candidate → 10
+4. Tech role + 3+ skill matches → 70-88
+5. Tech role + 1-2 skills → 45-69
+6. Adjacent tech role → 35-55
+7. Max 90. Never 91-100.
+
+JSON only: {{"match_score":<0-90>,"matched_skills":[<max 5>],"reason":"<10 words>"}}"""
+
+            response = groq_client.chat.completions.create(
+                model="llama-3.1-8b-instant",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.1,
+                max_tokens=80,  # tiny response = fewer output tokens
+            )
+            content = response.choices[0].message.content.strip()
+            if "```" in content:
+                for part in content.split("```"):
+                    part = part.strip().lstrip("json").strip()
+                    if part.startswith("{"):
+                        content = part
+                        break
+            result = json.loads(content)
+            return job_id, result
+
+        # Run in parallel — 6 workers to stay under TPM limit
         scored = 0
-        for row in tech_jobs[:50]:  # max 50 AI calls at onboarding
-            job_id, title, company, location, description = row
+        errors = 0
+        batch_size = 6  # process in small batches with pause between
+        delay_between_batches = 3.5  # seconds — keeps us under 6000 TPM
 
-            try:
-                job_dict = {
-                    "title": f"{title} at {company}",
-                    "description": description or "",
-                    "location": location or "",
-                }
+        for i in range(0, len(to_score), batch_size):
+            batch = to_score[i:i + batch_size]
 
-                result = calculate_match_score(job_dict, profile_dict)
-                score = result["match_score"]
+            with ThreadPoolExecutor(max_workers=batch_size) as executor:
+                futures = {executor.submit(score_one, row): row for row in batch}
+                for future in as_completed(futures):
+                    row = futures[future]
+                    job_id = row[0]
+                    try:
+                        jid, result = future.result()
+                        score = max(0, min(90, int(result.get("match_score", 0))))
+                        matched = result.get("matched_skills", [])
 
-                db.execute(text("""
-                    INSERT INTO user_job_scores
-                        (user_id, job_id, match_score, skills_match,
-                         experience_match, preferences_match,
-                         matched_skills, missing_skills, reason, computed_at)
-                    VALUES
-                        (:uid, :jid, :score, :sm, :em, :pm,
-                         :ms::jsonb, :mis::jsonb, :reason, NOW())
-                    ON CONFLICT (user_id, job_id) DO UPDATE SET
-                        match_score      = EXCLUDED.match_score,
-                        skills_match     = EXCLUDED.skills_match,
-                        experience_match = EXCLUDED.experience_match,
-                        matched_skills   = EXCLUDED.matched_skills,
-                        missing_skills   = EXCLUDED.missing_skills,
-                        reason           = EXCLUDED.reason,
-                        computed_at      = NOW()
-                """), {
-                    "uid": user_id,
-                    "jid": job_id,
-                    "score": score,
-                    "sm": result.get("skills_match", 0),
-                    "em": result.get("experience_match", 0),
-                    "pm": result.get("preferences_match", 0),
-                    "ms": json.dumps(result.get("matched_skills", [])),
-                    "mis": json.dumps(result.get("missing_skills", [])),
-                    "reason": result.get("reason", "Scored at onboarding"),
-                })
-                db.commit()
-                scored += 1
+                        db.execute(text("""
+                            INSERT INTO user_job_scores
+                                (user_id, job_id, match_score, skills_match,
+                                 experience_match, preferences_match,
+                                 matched_skills, missing_skills, reason, computed_at)
+                            VALUES
+                                (:uid, :jid, :score, :score, 50, 50,
+                                 :ms::jsonb, '[]'::jsonb, 'ai onboarding score', NOW())
+                            ON CONFLICT (user_id, job_id) DO UPDATE SET
+                                match_score    = EXCLUDED.match_score,
+                                skills_match   = EXCLUDED.skills_match,
+                                matched_skills = EXCLUDED.matched_skills,
+                                reason         = EXCLUDED.reason,
+                                computed_at    = NOW()
+                            WHERE user_job_scores.reason IN ('keyword estimate', 'ai onboarding score')
+                        """), {
+                            "uid": user_id, "jid": jid, "score": score,
+                            "ms": json.dumps(matched[:5]),
+                        })
+                        db.commit()
+                        scored += 1
 
-                # 1.1s between calls keeps us under 6000 TPM on llama-3.1-8b-instant
-                time.sleep(1.1)
+                    except Exception as e:
+                        errors += 1
+                        if "429" in str(e):
+                            logger.warning(f"[Onboarding Scorer] Rate limit hit — pausing 15s")
+                            time.sleep(15)
+                        else:
+                            logger.warning(f"[Onboarding Scorer] Job {job_id} failed: {e}")
 
-            except Exception as e:
-                logger.warning(f"[Onboarding Scorer] Failed job {job_id}: {type(e).__name__}: {e}")
-                if "429" in str(e):
-                    time.sleep(12)
-                else:
-                    time.sleep(2)
-                continue
+            # Pause between batches to stay under TPM
+            if i + batch_size < len(to_score):
+                time.sleep(delay_between_batches)
 
-        logger.info(f"[Onboarding Scorer] Done — {scored} jobs scored for user {user_id}")
+        logger.info(
+            f"[Onboarding Scorer] User {user_id} done — "
+            f"scored: {scored}, errors: {errors}"
+        )
 
     except Exception as e:
-        logger.error(f"[Onboarding Scorer] Fatal error for user {user_id}: {e}")
+        logger.error(f"[Onboarding Scorer] Fatal for user {user_id}: {e}")
     finally:
         db.close()
 
@@ -263,8 +314,6 @@ def complete_onboarding(
     profile = db.query(UserProfile).filter(
         UserProfile.user_id == current_user.id
     ).first()
-
     if not profile:
         raise HTTPException(404, "Complete steps 2-4 first")
-
     return {"success": True, "message": "Onboarding complete! 🎉"}
