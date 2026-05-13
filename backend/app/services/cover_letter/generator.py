@@ -84,6 +84,8 @@ STRICT RULES — violating any of these makes the letter unusable:
 - Reference actual experience from the candidate's background
 - Sound direct and confident, not eager or apologetic
 - End on a specific statement about contribution, not a generic "looking forward to discussing"
+- Third paragraph must name one specific thing from the job description you will contribute to — not generic statements about 'scalable applications' or 'meaningful impact'
+- Never use 'seasoned', 'proven track record', 'make a significant contribution', 'drive meaningful impact', 'high-quality standards'
 
 Job:
 - Role: {job_title}
@@ -104,7 +106,7 @@ Return ONLY the 3-paragraph cover letter body. Nothing before it, nothing after 
             model="llama-3.3-70b-versatile",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.7,
-            max_tokens=500  # reduced — 3 paragraphs needs 300-400 tokens max
+            max_tokens=300  # reduced — 3 paragraphs needs 300-400 tokens max
         )
 
         content = response.choices[0].message.content.strip()
