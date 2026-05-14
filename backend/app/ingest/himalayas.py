@@ -155,9 +155,14 @@ def _to_int(val) -> int | None:
 def _parse_date(val) -> datetime:
     if val is None:
         return datetime.now(timezone.utc)
-    if isinstance(val, (int, float)):  # Unix ms
+    if isinstance(val, (int, float)):
         try:
-            return datetime.fromtimestamp(val / 1000, tz=timezone.utc)
+            # Detect seconds vs milliseconds by magnitude.
+            # Valid ms timestamps (2020-2030) are > 1_500_000_000_000
+            # Valid s  timestamps (2020-2030) are ~  1_500_000_000
+            if val > 1_000_000_000_000:
+                val = val / 1000  # convert ms → s
+            return datetime.fromtimestamp(val, tz=timezone.utc)
         except Exception:
             return datetime.now(timezone.utc)
     if isinstance(val, str):
